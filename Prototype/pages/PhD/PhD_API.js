@@ -123,7 +123,7 @@ export const updateResearchArea = (areaId) => {
       'Content-Type': 'application/json'
     },
     data: {
-      researchAreaId: areaId // 单个ID，不再是数组
+      skillId: areaId // 单个ID，不再是数组
     }
   });
 };
