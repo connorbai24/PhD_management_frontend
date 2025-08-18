@@ -1,0 +1,1271 @@
+# 评审日程系统接口文档
+
+## 1. 概述
+
+本文档描述了评审日程系统的后端接口规范，包括时间配置管理、用户时间选择、评审任务分配等功能的API接口。
+
+### 1.1 基础信息
+
+- **接口域名**: `https://api.review-system.com`
+- **API版本**: `v1`
+- **接口前缀**: `/api/v1`
+- **数据格式**: JSON
+- **字符编码**: UTF-8
+
+### 1.2 通用响应格式
+
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {},
+  "timestamp": 1690876800000
+}
+```
+
+### 1.3 状态码说明
+
+| 状态码 | 说明 |
+|--------|------|
+| 200 | 请求成功 |
+| 400 | 请求参数错误 |
+| 401 | 未授权 |
+| 403 | 权限不足 |
+| 404 | 资源不存在 |
+| 500 | 服务器内部错误 |
+
+## 2. 时间配置管理接口
+
+### 2.1 获取当前时间配置
+
+**接口地址**: `GET /api/v1/time-config`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "globalSettings": {
+      "slotDuration": 45,
+      "breakTime": 15
+    },
+    "dateConfigs": [
+      {
+        "date": "2025-06-26",
+        "displayDate": "2025/06/26周四",
+        "morning": {
+          "startTime": "09:00",
+          "endTime": "12:00"
+        },
+        "afternoon": {
+          "startTime": "14:00",
+          "endTime": "17:00"
+        }
+      }
+    ],
+    "timeConfig": {
+      "day1": {
+        "date": "2025-06-26",
+        "displayDate": "2025/06/26周四",
+        "morning": {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "slotDuration": 45,
+          "breakTime": 15
+        },
+        "afternoon": {
+          "startTime": "14:00",
+          "endTime": "17:00",
+          "slotDuration": 45,
+          "breakTime": 15
+        }
+      }
+    },
+    "totalSlots": 8
+  }
+}
+```
+
+### 2.2 更新全局评审设置（管理员）
+
+**接口地址**: `PUT /api/v1/admin/global-settings`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+```json
+{
+  "slotDuration": 45,
+  "breakTime": 15
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| slotDuration | number | 是 | 每场评审时长（分钟），1-180 |
+| breakTime | number | 是 | 场次间隔时间（分钟），0-60 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "全局设置更新成功",
+  "data": {
+    "slotDuration": 45,
+    "breakTime": 15,
+    "validation": {
+      "isValid": true,
+      "errors": []
+    }
+  }
+}
+```
+
+### 2.3 更新日期配置（管理员）
+
+**接口地址**: `PUT /api/v1/admin/date-configs`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+```json
+{
+  "dateConfigs": [
+    {
+      "date": "2025-06-26",
+      "displayDate": "2025/06/26周四",
+      "morning": {
+        "startTime": "09:00",
+        "endTime": "12:00"
+      },
+      "afternoon": {
+        "startTime": "14:00",
+        "endTime": "17:00"
+      }
+    }
+  ]
+}
+```
+
+**参数说明**:
+- `dateConfigs`: 日期配置数组
+  - `date`: 日期（YYYY-MM-DD格式）
+  - `displayDate`: 显示用日期字符串
+  - `morning`: 上午时间段配置，可选
+    - `startTime`: 开始时间（HH:MM格式）
+    - `endTime`: 结束时间（HH:MM格式）
+  - `afternoon`: 下午时间段配置，可选
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "日期配置更新成功",
+  "data": {
+    "updatedConfig": {
+      "day1": {
+        "date": "2025-06-26",
+        "displayDate": "2025/06/26周四",
+        "morning": {
+          "startTime": "09:00",
+          "endTime": "12:00",
+          "slotDuration": 45,
+          "breakTime": 15
+        }
+      }
+    },
+    "totalSlots": 4,
+    "validation": {
+      "isValid": true,
+      "errors": []
+    }
+  }
+}
+```
+
+### 2.4 验证时间配置
+
+**接口地址**: `POST /api/v1/admin/validate-config`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+```json
+{
+  "globalSettings": {
+    "slotDuration": 45,
+    "breakTime": 15
+  },
+  "dateConfigs": [
+    {
+      "date": "2025-06-26",
+      "displayDate": "2025/06/26周四",
+      "morning": {
+        "startTime": "09:00",
+        "endTime": "12:00"
+      }
+    }
+  ]
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "配置验证完成",
+  "data": {
+    "validation": {
+      "isValid": true,
+      "errors": []
+    },
+    "totalSlots": 4,
+    "generatedTimeSlots": {
+      "day1": {
+        "morning": [
+          {
+            "id": 1,
+            "time": "09:00-09:45",
+            "startTime": "09:00",
+            "endTime": "09:45"
+          },
+          {
+            "id": 2,
+            "time": "10:00-10:45",
+            "startTime": "10:00",
+            "endTime": "10:45"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+## 3. 用户时间选择接口
+
+### 3.1 获取用户时间选择
+
+**接口地址**: `GET /api/v1/user/time-selection`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "userId": "user123",
+    "selectedSlots": [
+      "2025-06-26-morning-1",
+      "2025-06-26-morning-2",
+      "2025-06-26-afternoon-1"
+    ],
+    "lastUpdated": "2025-06-20T10:30:00.000Z",
+    "deadline": "2025-08-25T18:00:00.000Z",
+    "isDeadlinePassed": false
+  }
+}
+```
+
+### 3.2 保存用户时间选择
+
+**接口地址**: `POST /api/v1/user/time-selection`
+
+**请求参数**:
+```json
+{
+  "selectedSlots": [
+    "2025-06-26-morning-1",
+    "2025-06-26-morning-2",
+    "2025-06-26-afternoon-1"
+  ]
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| selectedSlots | array | 是 | 选中的时间段ID数组，格式：日期-时段-序号 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "时间选择保存成功",
+  "data": {
+    "userId": "user123",
+    "selectedSlots": [
+      "2025-06-26-morning-1",
+      "2025-06-26-morning-2",
+      "2025-06-26-afternoon-1"
+    ],
+    "savedAt": "2025-06-20T10:30:00.000Z",
+    "totalSelected": 3
+  }
+}
+```
+
+### 3.3 获取选择截止时间
+
+**接口地址**: `GET /api/v1/deadline`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "deadline": "2025-08-25T18:00:00.000Z",
+    "currentTime": "2025-06-20T10:30:00.000Z",
+    "isDeadlinePassed": false,
+    "remainingTime": {
+      "days": 66,
+      "hours": 7,
+      "minutes": 30
+    },
+    "formattedDeadline": "2025/08/25 18:00",
+    "countdownText": "66天7小时30分钟"
+  }
+}
+```
+
+## 4. 评审任务管理接口
+
+### 4.1 获取用户评审任务
+
+**接口地址**: `GET /api/v1/user/review-tasks`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "scheduleData": [
+      {
+        "date": "11月20日",
+        "weekday": "星期四",
+        "tasks": [
+          {
+            "id": 1,
+            "timeRange": "10:30 - 11:15",
+            "studentName": "李明",
+            "researchField": "人工智能",
+            "location": "科研楼A座 301会议室",
+            "myRole": "评审一号",
+            "coAssessor": "王伟 教授"
+          }
+        ]
+      }
+    ],
+    "totalTasks": 1,
+    "upcomingTasks": 1
+  }
+}
+```
+
+### 4.2 更新评审任务状态
+
+**接口地址**: `PUT /api/v1/user/review-tasks/{taskId}/status`
+
+**路径参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| taskId | number | 是 | 任务ID |
+
+**请求参数**:
+```json
+{
+  "status": "completed",
+  "notes": "评审完成，学生表现良好"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| status | string | 是 | 任务状态：pending/in-progress/completed/cancelled |
+| notes | string | 否 | 备注信息 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "任务状态更新成功",
+  "data": {
+    "taskId": 1,
+    "status": "completed",
+    "notes": "评审完成，学生表现良好",
+    "updatedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+## 5. 通知管理接口
+
+### 5.1 获取用户通知
+
+**接口地址**: `GET /api/v1/user/notifications`
+
+**请求参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| page | number | 否 | 页码，默认1 |
+| limit | number | 否 | 每页数量，默认20 |
+| unreadOnly | boolean | 否 | 仅未读通知，默认false |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "notifications": [
+      {
+        "id": 1,
+        "type": "schedule",
+        "title": "评审安排变更",
+        "description": "您明日上午的评审时间调整为",
+        "highlightInfo": "10:00-10:45",
+        "extraInfo": "学生：李明 | 地点：科研楼A座301",
+        "time": "2小时前",
+        "isRead": false,
+        "createdAt": "2025-06-20T10:30:00.000Z"
+      },
+      {
+        "id": 2,
+        "type": "system",
+        "title": "系统维护通知",
+        "description": "系统将于今晚进行维护，期间可能无法正常使用",
+        "highlightInfo": "22:00-23:00",
+        "extraInfo": null,
+        "time": "5小时前",
+        "isRead": false,
+        "createdAt": "2025-06-20T05:30:00.000Z"
+      },
+      {
+        "id": 3,
+        "type": "reminder",
+        "title": "评审提醒",
+        "description": "距离下次评审还有",
+        "highlightInfo": "1小时",
+        "extraInfo": "学生：张小雨 | 时间：11:15-12:00",
+        "time": "1天前",
+        "isRead": true,
+        "createdAt": "2025-06-19T10:30:00.000Z"
+      },
+      {
+        "id": 4,
+        "type": "announcement",
+        "title": "重要公告",
+        "description": "评审委员会关于论文评审标准的最新调整说明",
+        "highlightInfo": null,
+        "extraInfo": "请及时查看最新评审要求",
+        "time": "2天前",
+        "isRead": true,
+        "createdAt": "2025-06-18T10:30:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 5,
+      "totalPages": 1
+    },
+    "unreadCount": 2
+  }
+}
+```
+
+### 5.2 标记通知为已读
+
+**接口地址**: `PUT /api/v1/user/notifications/{notificationId}/read`
+
+**路径参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| notificationId | number | 是 | 通知ID |
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "通知已标记为已读",
+  "data": {
+    "notificationId": 1,
+    "isRead": true,
+    "readAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 5.3 检查新通知
+
+**接口地址**: `GET /api/v1/user/notifications/check`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "hasNewNotification": true,
+    "unreadCount": 3,
+    "latestNotification": {
+      "id": 1,
+      "type": "schedule_update",
+      "title": "评审时间安排更新",
+      "createdAt": "2025-06-20T10:30:00.000Z"
+    }
+  }
+}
+```
+
+## 6. 教师信息管理接口
+
+### 6.1 获取教师基本信息
+
+**接口地址**: `GET /api/v1/teacher/profile`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "name": "王伟",
+    "userId": "teacher123",
+    "researchAreas": [
+      {
+        "id": 1,
+        "name": "机器学习与人工智能",
+        "status": "approved",
+        "createdAt": "2025-06-20T10:30:00.000Z"
+      }
+    ],
+    "lastLoginAt": "2025-06-20T09:00:00.000Z"
+  }
+}
+```
+
+### 6.2 更新教师基本信息
+
+**接口地址**: `PUT /api/v1/teacher/profile`
+
+**请求参数**:
+```json
+{
+  "name": "王伟"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 否 | 教师姓名 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "个人信息更新成功",
+  "data": {
+    "name": "王伟",
+    "updatedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+## 7. 研究方向管理接口
+
+### 7.1 获取教师研究方向
+
+**接口地址**: `GET /api/v1/teacher/research-areas`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "researchAreas": [
+      {
+        "id": 1,
+        "name": "机器学习与人工智能",
+        "status": "approved",
+        "createdAt": "2025-06-20T10:30:00.000Z",
+        "approvedAt": "2025-06-21T14:20:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "计算机视觉",
+        "status": "pending",
+        "createdAt": "2025-06-22T16:15:00.000Z",
+        "approvedAt": null
+      }
+    ],
+    "totalCount": 2,
+    "pendingCount": 1,
+    "approvedCount": 1
+  }
+}
+```
+
+### 7.2 添加研究方向
+
+**接口地址**: `POST /api/v1/teacher/research-areas`
+
+**请求参数**:
+```json
+{
+  "name": "自然语言处理"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| name | string | 是 | 研究方向名称，2-50个字符 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "研究方向添加成功",
+  "data": {
+    "id": 3,
+    "name": "自然语言处理",
+    "status": "pending",
+    "createdAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 7.3 删除研究方向
+
+**接口地址**: `DELETE /api/v1/teacher/research-areas/{areaId}`
+
+**路径参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| areaId | number | 是 | 研究方向ID |
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "研究方向删除成功",
+  "data": {
+    "deletedId": 3,
+    "deletedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 7.4 获取可选研究方向列表
+
+**接口地址**: `GET /api/v1/research-directions`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "directions": [
+      "机器学习与人工智能",
+      "计算机视觉",
+      "自然语言处理",
+      "数据科学与大数据",
+      "网络安全",
+      "分布式系统",
+      "人机交互",
+      "软件工程",
+      "算法设计与分析",
+      "云计算与边缘计算"
+    ]
+  }
+}
+```
+
+## 8. 专业方向确认接口
+
+### 8.1 获取当前研究方向信息
+
+**接口地址**: `GET /api/v1/teacher/research-confirmation`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "direction": "机器学习与人工智能",
+    "isConfirmed": false,
+    "lastUpdated": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 8.2 保存研究方向确认
+
+**接口地址**: `POST /api/v1/teacher/research-confirmation`
+
+**请求参数**:
+```json
+{
+  "direction": "机器学习与人工智能"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| direction | string | 是 | 确认的研究方向 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "研究方向确认成功",
+  "data": {
+    "direction": "机器学习与人工智能",
+    "isConfirmed": true,
+    "confirmedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 8.3 申请自定义研究方向
+
+**接口地址**: `POST /api/v1/teacher/custom-research-direction`
+
+**请求参数**:
+```json
+{
+  "customDirection": "量子计算与算法"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| customDirection | string | 是 | 自定义研究方向名称 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "自定义研究方向申请已提交",
+  "data": {
+    "applicationId": 123,
+    "direction": "量子计算与算法",
+    "status": "pending",
+    "submittedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+## 9. 密码管理接口
+
+### 9.1 修改密码
+
+**接口地址**: `PUT /api/v1/user/password`
+
+**请求参数**:
+```json
+{
+  "currentPassword": "oldPassword123",
+  "newPassword": "newPassword456",
+  "confirmPassword": "newPassword456"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| currentPassword | string | 是 | 当前密码 |
+| newPassword | string | 是 | 新密码，6-20位 |
+| confirmPassword | string | 是 | 确认新密码 |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "密码修改成功",
+  "data": {
+    "updatedAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+## 10. 用户认证接口
+
+### 10.1 用户登录
+
+**接口地址**: `POST /api/v1/auth/login`
+
+**请求参数**:
+```json
+{
+  "username": "teacher001",
+  "password": "password123",
+  "userType": "teacher"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | string | 是 | 用户名 |
+| password | string | 是 | 密码 |
+| userType | string | 是 | 用户类型：teacher/student |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登录成功",
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "userInfo": {
+      "id": "teacher123",
+      "name": "王伟",
+      "userType": "teacher",
+      "researchAreas": [
+        {
+          "id": 1,
+          "name": "机器学习与人工智能",
+          "status": "approved"
+        }
+      ]
+    },
+    "expiresIn": 86400
+  }
+}
+```
+
+### 10.2 用户登出
+
+**接口地址**: `POST /api/v1/auth/logout`
+
+**请求参数**: 无
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "登出成功",
+  "data": {
+    "logoutAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+### 10.3 刷新Token
+
+**接口地址**: `POST /api/v1/auth/refresh`
+
+**请求参数**:
+```json
+{
+  "refreshToken": "refresh_token_string"
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "Token刷新成功",
+  "data": {
+    "token": "new_access_token",
+    "refreshToken": "new_refresh_token",
+    "expiresIn": 86400
+  }
+}
+```
+
+## 11. WebSocket实时通知
+
+### 11.1 连接地址
+
+`wss://api.review-system.com/ws`
+
+### 11.2 消息格式
+
+**服务端推送**:
+```json
+{
+  "type": "notification",
+  "data": {
+    "id": 123,
+    "type": "schedule_update",
+    "title": "评审时间安排更新",
+    "content": "管理员已更新评审时间配置",
+    "timestamp": 1690876800000
+  }
+}
+```
+
+**配置更新推送**:
+```json
+{
+  "type": "config_update",
+  "data": {
+    "timeConfig": {
+      "day1": {
+        "date": "2025-06-26",
+        "displayDate": "2025/06/26周四"
+      }
+    },
+    "totalSlots": 8,
+    "timestamp": 1690876800000
+  }
+}
+```
+
+**研究方向审核结果推送**:
+```json
+{
+  "type": "research_area_approved",
+  "data": {
+    "areaId": 2,
+    "name": "计算机视觉",
+    "status": "approved",
+    "approvedAt": "2025-06-20T10:30:00.000Z",
+    "timestamp": 1690876800000
+  }
+}
+```
+
+## 12. 管理员专用接口
+
+### 12.1 获取所有用户时间选择统计
+
+**接口地址**: `GET /api/v1/admin/time-selection-stats`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| date | string | 否 | 指定日期过滤，格式YYYY-MM-DD |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "totalUsers": 50,
+    "submittedUsers": 45,
+    "submissionRate": 0.9,
+    "slotStats": {
+      "2025-06-26-morning-1": {
+        "slotInfo": {
+          "date": "2025-06-26",
+          "period": "上午",
+          "time": "09:00-09:45"
+        },
+        "selectedCount": 30,
+        "availableUsers": ["user1", "user2"]
+      }
+    },
+    "deadline": "2025-08-25T18:00:00.000Z",
+    "isDeadlinePassed": false
+  }
+}
+```
+
+### 12.2 生成评审任务分配
+
+**接口地址**: `POST /api/v1/admin/generate-assignments`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+```json
+{
+  "students": [
+    {
+      "id": "student1",
+      "name": "李明",
+      "researchField": "人工智能",
+      "preferredDate": "2025-06-26",
+      "preferredPeriod": "morning"
+    }
+  ],
+  "locations": [
+    {
+      "id": "room1",
+      "name": "科研楼A座 301会议室",
+      "capacity": 2
+    }
+  ],
+  "assignmentRules": {
+    "reviewersPerStudent": 2,
+    "maxTasksPerReviewer": 5
+  }
+}
+```
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "评审任务分配生成成功",
+  "data": {
+    "assignments": [
+      {
+        "studentId": "student1",
+        "studentName": "李明",
+        "slotId": "2025-06-26-morning-1",
+        "timeRange": "09:00-09:45",
+        "location": "科研楼A座 301会议室",
+        "reviewers": [
+          {
+            "userId": "reviewer1",
+            "name": "张教授",
+            "role": "评审一号"
+          },
+          {
+            "userId": "reviewer2", 
+            "name": "王教授",
+            "role": "评审二号"
+          }
+        ]
+      }
+    ],
+    "stats": {
+      "totalAssignments": 1,
+      "successfulAssignments": 1,
+      "failedAssignments": 0,
+      "conflicts": []
+    }
+  }
+}
+```
+
+### 12.3 发送系统通知
+
+**接口地址**: `POST /api/v1/admin/notifications`
+
+**权限要求**: 管理员权限
+
+**请求参数**:
+```json
+{
+  "type": "schedule_update",
+  "title": "评审时间安排更新",
+  "content": "管理员已更新评审时间配置，请重新确认您的可用时间",
+  "recipients": ["all"],
+  "priority": "normal"
+}
+```
+
+**参数说明**:
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| type | string | 是 | 通知类型：schedule_update/task_assigned/deadline_reminder等 |
+| title | string | 是 | 通知标题 |
+| content | string | 是 | 通知内容 |
+| recipients | array | 是 | 接收者，["all"]表示所有用户，或具体用户ID数组 |
+| priority | string | 否 | 优先级：low/normal/high，默认normal |
+
+**响应示例**:
+```json
+{
+  "code": 200,
+  "message": "通知发送成功",
+  "data": {
+    "notificationId": 123,
+    "sentTo": 50,
+    "failed": 0,
+    "sentAt": "2025-06-20T10:30:00.000Z"
+  }
+}
+```
+
+## 13. 错误处理
+
+### 13.1 常见错误响应
+
+**配置验证失败**:
+```json
+{
+  "code": 400,
+  "message": "配置验证失败",
+  "data": {
+    "errors": [
+      "评审时长必须大于0分钟",
+      "第1天 上午时间段太短，无法安排一场评审（需要至少45分钟）"
+    ]
+  }
+}
+```
+
+**权限不足**:
+```json
+{
+  "code": 403,
+  "message": "权限不足，需要管理员权限",
+  "data": null
+}
+```
+
+**截止时间已过**:
+```json
+{
+  "code": 400,
+  "message": "时间选择截止时间已过，无法修改",
+  "data": {
+    "deadline": "2025-08-25T18:00:00.000Z",
+    "currentTime": "2025-08-26T10:00:00.000Z"
+  }
+}
+```
+
+## 14. 认证和权限
+
+### 14.1 请求头
+
+所有需要认证的接口都需要在请求头中包含：
+
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+### 14.2 权限级别
+
+- **普通用户**: 可以查看和修改自己的时间选择、查看评审任务、接收通知
+- **管理员**: 拥有所有权限，包括配置管理、任务分配、统计查看等
+
+## 15. WebSocket实时通知
+
+### 15.1 连接地址
+
+`wss://api.review-system.com/ws`
+
+### 15.2 消息格式
+
+**服务端推送**:
+```json
+{
+  "type": "notification",
+  "data": {
+    "id": 123,
+    "type": "schedule_update",
+    "title": "评审时间安排更新",
+    "content": "管理员已更新评审时间配置",
+    "timestamp": 1690876800000
+  }
+}
+```
+
+**配置更新推送**:
+```json
+{
+  "type": "config_update",
+  "data": {
+    "timeConfig": {
+      "day1": {
+        "date": "2025-06-26",
+        "displayDate": "2025/06/26周四"
+      }
+    },
+    "totalSlots": 8,
+    "timestamp": 1690876800000
+  }
+}
+```
+
+## 16. 数据模型
+
+### 16.1 时间配置模型
+
+```typescript
+interface GlobalSettings {
+  slotDuration: number; // 评审时长（分钟）
+  breakTime: number;    // 间隔时间（分钟）
+}
+
+interface TimeSlot {
+  startTime: string;    // 开始时间 HH:MM
+  endTime: string;      // 结束时间 HH:MM
+}
+
+interface DateConfig {
+  date: string;         // 日期 YYYY-MM-DD
+  displayDate: string;  // 显示日期
+  morning?: TimeSlot;   // 上午时间段
+  afternoon?: TimeSlot; // 下午时间段
+}
+
+interface GeneratedTimeSlot {
+  id: number;
+  time: string;         // 时间范围 HH:MM-HH:MM
+  startTime: string;
+  endTime: string;
+}
+```
+
+### 16.2 评审任务模型
+
+```typescript
+interface ReviewTask {
+  id: number;
+  timeRange: string;
+  studentName: string;
+  researchField: string;
+  location: string;
+  myRole: string;
+  coAssessor: string;
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  notes?: string;
+}
+```
+
+### 16.3 通知模型
+
+```typescript
+interface Notification {
+  id: number;
+  type: string;
+  title: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string;
+}
+```
+
+---
+
+*文档版本: v1.0*  
+*最后更新: 2025-07-31*

@@ -1,0 +1,509 @@
+<template>
+  <view class="profile-container">
+    <!-- 顶部导航栏 -->
+    <view class="nav-bar">
+      <text class="nav-title">我的</text>
+    </view>
+
+    <!-- 个人信息概览 -->
+    <view class="profile-header">
+      <view class="avatar-section">
+        <view class="avatar">
+          <text class="avatar-text">{{ getAvatarText(userInfo.name) }}</text>
+        </view>
+      </view>
+      <view class="info-section">
+        <text class="user-name">{{ userInfo.name }}</text>
+        <text class="user-title">{{ userInfo.title }}</text>
+        <text class="user-department">{{ userInfo.department }}</text>
+      </view>
+    </view>
+
+    <!-- 功能列表 -->
+    <scroll-view class="function-list" scroll-y="true">
+      <!-- 第一组：账户设置 -->
+      <view class="function-group">
+        <view class="group-header">
+          <text class="group-title">账户设置</text>
+        </view>
+        <view class="function-items">
+          <view class="function-item" @click="handleChangePassword">
+            <view class="item-left">
+              <view class="item-icon password-icon">
+                <text class="icon-text">🔒</text>
+              </view>
+              <text class="item-title">修改密码</text>
+            </view>
+            <view class="item-right">
+              <text class="arrow-icon">›</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 第二组：应用操作 -->
+      <view class="function-group">
+        <view class="group-header">
+          <text class="group-title">应用操作</text>
+        </view>
+        <view class="function-items">
+          <view class="function-item logout-item" @click="handleLogout">
+            <view class="item-center">
+              <text class="logout-text">退出登录</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 底部间距 -->
+      <view class="bottom-space"></view>
+    </scroll-view>
+    
+    <!-- 底部导航栏 -->
+    <view class="bottom-navigation">
+      <view class="nav-item" :class="{active: activeTab === 'overview'}" @click="switchTab('overview')">
+        <text class="nav-icon">📊</text>
+        <text class="nav-text">系统概览</text>
+      </view>
+      <view class="nav-item" :class="{active: activeTab === 'generation'}" @click="switchTab('generation')">
+        <text class="nav-icon">🎯</text>
+        <text class="nav-text">方案生成</text>
+      </view>
+      <view class="nav-item" :class="{active: activeTab === 'profile'}" @click="switchTab('profile')">
+        <text class="nav-icon">👤</text>
+        <text class="nav-text">我的</text>
+      </view>
+    </view>
+
+    <!-- 退出登录确认弹窗 -->
+    <view v-if="showLogoutModal" class="modal-overlay" @click="hideLogoutModal">
+      <view class="modal-content" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">确认退出</text>
+        </view>
+        <view class="modal-body">
+          <text class="modal-message">确定要退出登录吗？</text>
+        </view>
+        <view class="modal-actions">
+          <view class="modal-button cancel-button" @click="hideLogoutModal">
+            <text class="button-text">取消</text>
+          </view>
+          <view class="modal-button confirm-button" @click="confirmLogout">
+            <text class="button-text">退出</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+
+// 响应式数据
+const userInfo = ref({
+  name: '王伟',
+  title: '管理员',
+  department: '计算机科学与技术学院',
+  employeeId: 'T2021001'
+})
+
+const showLogoutModal = ref(false)
+const activeTab = ref('profile')
+
+onMounted(() => {
+  // 页面加载时的初始化逻辑
+  console.log('老师端我的页面已加载')
+})
+
+// 方法定义
+const getAvatarText = (name) => {
+  return name ? name.charAt(name.length - 1) : 'T'
+}
+
+
+const handleChangePassword = () => {
+  console.log('点击修改密码')
+  // 跳转到修改密码页面（与博士生端复用）
+  uni.redirectTo({
+    url: '/pages/common/change-password'
+  })
+}
+
+const handleLogout = () => {
+  showLogoutModal.value = true
+}
+
+const hideLogoutModal = () => {
+  showLogoutModal.value = false
+}
+
+const confirmLogout = () => {
+  console.log('确认退出登录')
+  // 清除登录状态
+  uni.removeStorageSync('userInfo')
+  uni.removeStorageSync('token')
+  
+  // 跳转到登录页面
+  uni.reLaunch({
+    url: '/pages/login/login'
+  })
+  
+  hideLogoutModal()
+}
+
+const switchTab = (tab) => {
+  activeTab.value = tab
+  switch(tab) {
+    case 'overview':
+      uni.navigateTo({ url: '/pages/admin/dashboard/dashboard' })
+      break
+    case 'generation':
+      uni.navigateTo({ url: '/pages/admin/schedule/schedule-generation' })
+      break
+    case 'profile':
+      // 当前页，无需跳转
+      break
+  }
+}
+</script>
+
+<style scoped>
+.profile-container {
+  min-height: 100vh;
+  /* 修改背景为灰色渐变，匹配图片样式 */
+  background: linear-gradient(180deg, #f2f2f7 0%, #f2f2f7 100%);
+  /* 修改整体容器的padding，确保内容不会紧贴边框 */
+  padding: 0 24rpx;
+  box-sizing: border-box;
+  padding-bottom: 120rpx; /* 为底部导航预留空间 */
+}
+
+/* 顶部导航栏 */
+.nav-bar {
+  height: 88rpx;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  /* 调整导航栏的margin，避免紧贴 */
+  margin: 0 -24rpx;
+}
+
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+  letter-spacing: 0.5rpx;
+}
+
+/* 个人信息概览 */
+.profile-header {
+  background: #ffffff;
+  /* 调整margin，不再额外设置左右margin */
+  margin: 24rpx 0;
+  border-radius: 24rpx;
+  padding: 40rpx 32rpx;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.06);
+  border: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.avatar-section {
+  margin-right: 24rpx;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background: linear-gradient(135deg, #007AFF, #5856D6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 20rpx rgba(0, 122, 255, 0.3);
+}
+
+.avatar-text {
+  font-size: 48rpx;
+  color: white;
+  font-weight: 600;
+}
+
+.info-section {
+  flex: 1;
+}
+
+.user-name {
+  font-size: 40rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.user-title {
+  font-size: 28rpx;
+  color: #007AFF;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.user-department {
+  font-size: 24rpx;
+  color: #8E8E93;
+  font-weight: 400;
+  display: block;
+}
+
+/* 功能列表 */
+.function-list {
+  flex: 1;
+  padding: 0;
+}
+
+.function-group {
+  margin-bottom: 32rpx;
+}
+
+.group-header {
+  padding: 0 12rpx 16rpx 12rpx;
+  margin-top: 24rpx;
+  position: relative;
+}
+
+.group-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #8E8E93;
+  text-transform: uppercase;
+  letter-spacing: 1rpx;
+  position: relative;
+  display: inline-block;
+}
+
+.group-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -6rpx;
+  width: 40rpx;
+  height: 4rpx;
+  background: #007aff;
+  border-radius: 2rpx;
+}
+
+.function-items {
+  background: #ffffff;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.04);
+  border: 1rpx solid rgba(0, 0, 0, 0.05);
+}
+
+.function-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  transition: background-color 0.2s ease;
+}
+
+.function-item:last-child {
+  border-bottom: none;
+}
+
+.function-item:active {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+}
+
+.item-icon {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 20rpx;
+}
+
+.password-icon {
+  background: linear-gradient(135deg, #8E8E93, #636366);
+}
+
+.icon-text {
+  font-size: 28rpx;
+}
+
+.item-title {
+  font-size: 30rpx;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.item-right {
+  display: flex;
+  align-items: center;
+}
+
+.arrow-icon {
+  font-size: 36rpx;
+  color: #C7C7CC;
+  font-weight: 300;
+}
+
+/* 退出登录特殊样式 */
+.logout-item {
+  justify-content: center;
+  padding: 28rpx 32rpx;
+}
+
+.item-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-text {
+  font-size: 30rpx;
+  color: #FF3B30;
+  font-weight: 500;
+}
+
+.logout-item:active {
+  background-color: rgba(255, 59, 48, 0.05);
+}
+
+/* 底部间距 */
+.bottom-space {
+  height: 40rpx;
+}
+
+/* 退出登录确认弹窗 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10rpx);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 28rpx;
+  width: 540rpx;
+  overflow: hidden;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  padding: 40rpx 32rpx 24rpx 32rpx;
+  text-align: center;
+}
+
+.modal-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.modal-body {
+  padding: 0 32rpx 40rpx 32rpx;
+  text-align: center;
+}
+
+.modal-message {
+  font-size: 28rpx;
+  color: #8E8E93;
+  line-height: 1.4;
+}
+
+.modal-actions {
+  display: flex;
+  border-top: 1rpx solid rgba(0, 0, 0, 0.1);
+}
+
+.modal-button {
+  flex: 1;
+  padding: 28rpx;
+  text-align: center;
+  transition: background-color 0.2s ease;
+}
+
+.modal-button:active {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.cancel-button {
+  border-right: 1rpx solid rgba(0, 0, 0, 0.1);
+}
+
+.cancel-button .button-text {
+  color: #007AFF;
+  font-size: 30rpx;
+  font-weight: 500;
+}
+
+.confirm-button .button-text {
+  color: #FF3B30;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+/* 底部导航栏 */
+.bottom-navigation {
+  background: white;
+  display: flex;
+  justify-content: space-around;
+  padding: 20rpx 0 32rpx 0;
+  border-top: 1rpx solid #e5e5e5;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 24rpx;
+  border-radius: 16rpx;
+  transition: all 0.3s ease;
+  min-width: 120rpx;
+}
+.nav-item.active {
+  background: #f3f4f6;
+}
+.nav-icon {
+  font-size: 24rpx;
+  margin-bottom: 8rpx;
+}
+.nav-text {
+  font-size: 22rpx;
+  color: #666666;
+}
+.nav-item.active .nav-text {
+  color: #4f46e5;
+  font-weight: 600;
+}
+</style>

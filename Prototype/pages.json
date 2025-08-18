@@ -1,0 +1,230 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+    }
+  },
+	"pages": [
+		{
+			"path" : "pages/login/login",
+			"style" : 
+			{
+				"navigationBarTitleText" : "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/PhD/preparation",
+			"style" : 
+			{
+				"navigationBarTitleText" : "方向确认",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/PhD/PhD",
+			"style" : 
+			{
+				"navigationBarTitleText" : "我的年度评审",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/PhD/history",
+			"style" : 
+			{
+				"navigationBarTitleText" : "年审历史记录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/PhD/profile",
+			"style" : 
+			{
+				"navigationBarTitleText" : "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/PhD/research-areas",
+			"style" : 
+			{
+				"navigationBarTitleText" : "修改研究方向",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/teacher/preparation/preparation",
+			"style" : 
+			{
+				"navigationBarTitleText" : "技能确认",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/teacher/schedule",
+			"style" : 
+			{
+				"navigationBarTitleText" : "评审日程",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/teacher/research-area",
+			"style" : 
+			{
+				"navigationBarTitleText" : "研究方向管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/teacher/profile",
+			"style" : 
+			{
+				"navigationBarTitleText" : "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/teacher/notification",
+			"style" : 
+			{
+				"navigationBarTitleText" : "通知",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/dashboard",
+			"style" : 
+			{
+				"navigationBarTitleText" : "仪表盘",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/user-management",
+			"style" : 
+			{
+				"navigationBarTitleText" : "用户管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/researchArea-management",
+			"style" : 
+			{
+				"navigationBarTitleText" : "研究方向管理",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/approval-center",
+			"style" : 
+			{
+				"navigationBarTitleText" : "审批中心",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/notification",
+			"style" : 
+			{
+				"navigationBarTitleText" : "通知发送",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/teacher-list",
+			"style" : 
+			{
+				"navigationBarTitleText" : "本次参与老师",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/dashboard/phd-list",
+			"style" : 
+			{
+				"navigationBarTitleText" : "本次参与博士生",
+				"navigationStyle": "custom"
+			}
+		},
+
+		{
+			"path" : "pages/admin/schedule/schedule-generation",
+			"style" : 
+			{
+				"navigationBarTitleText" : "方案生成",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/admin/profile",
+			"style" : 
+			{
+				"navigationBarTitleText" : "我的",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path" : "pages/common/change-password",
+			"style" : 
+			{
+				"navigationBarTitleText" : "修改密码",
+				"navigationStyle": "custom"
+			}
+		}
+	],
+	"tabBar": {
+		"custom": true,
+		"color": "#8e8e93",
+		"selectedColor": "#007aff",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{
+				"pagePath": "pages/PhD/PhD_未启用",
+				"text": "首页",
+				"iconPath": "static/tabbar/home.png"
+			},
+			{
+				"pagePath": "pages/PhD/history_未启用",
+				"text": "历史记录",
+				"iconPath": "static/tabbar/history.png"
+			},
+			{
+				"pagePath": "pages/PhD/profile_未启用",
+				"text": "我的",
+				"iconPath": "static/tabbar/profile.png"
+			}
+		]
+	},
+	"condition": {
+		"current": 0,
+		"list": [
+			{
+				"name": "教师端-日程",
+				"path": "pages/teacher/schedule",
+				"query": ""
+			},
+			{
+				"name": "教师端-我的",
+				"path": "pages/teacher/profile",
+				"query": ""
+			},
+			{
+				"name": "博士端",
+				"path": "pages/PhD/PhD",
+				"query": ""
+			}
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "博士年审系统",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#f2f2f7"
+	},
+	"uniIdRouter": {}
+}
