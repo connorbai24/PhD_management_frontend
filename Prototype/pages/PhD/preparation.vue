@@ -1,39 +1,32 @@
 <template>
   <view class="preparation-container">
-    <!-- 顶部导航栏 -->
     <view class="nav-bar">
       <text class="nav-title">方向确认</text>
     </view>
 
-    <!-- 主要内容区域 -->
     <view class="content-area">
-      <!-- 标题部分 -->
       <view class="header-section">
         <text class="main-title">专业方向确认</text>
         <text class="subtitle">请确认您的研究方向信息是否正确</text>
       </view>
 
-      <!-- 研究方向信息展示卡片 -->
       <view class="research-card">
         <view class="card-header">
           <text class="edit-btn" @click="toggleEditMode" v-if="!isEditing">编辑</text>
         </view>
 
-        <!-- 非编辑模式 - 显示信息 -->
         <view v-if="!isEditing" class="display-content">
-          <text class="research-direction">{{ currentResearch.direction }}</text>
+          <text class="research-direction">{{ currentResearch.direction || '暂未选择' }}</text>
         </view>
 
-        <!-- 编辑模式 -->
         <view v-else class="edit-content">
           <view class="edit-section">
             <text class="section-title">选择研究方向</text>
             
-            <!-- 下拉选择器 -->
             <picker 
               :value="editData.directionIndex" 
               :range="researchDirections" 
-              range-key="name"
+              range-key="skillName"
               @change="onDirectionChange"
               class="direction-picker"
             >
@@ -46,7 +39,6 @@
             </picker>
           </view>
 
-          <!-- 编辑操作按钮 -->
           <view class="edit-actions">
             <button class="action-btn cancel-btn" @click="cancelEdit">取消</button>
             <button class="action-btn save-btn" @click="saveChanges">
@@ -56,12 +48,10 @@
         </view>
       </view>
 
-      <!-- 确认提示 -->
       <view class="notice-card">
         <text class="notice-text">请仔细核对以上研究方向信息，确认无误后点击"确认"</text>
       </view>
 
-      <!-- 确认按钮 -->
       <view class="confirm-section">
         <button 
           class="confirm-btn" 
@@ -97,38 +87,52 @@ const canConfirm = computed(() => {
 const loadResearchDirections = async () => {
   try {
     const res = await fetchResearchDirections()
-    if (res[1].data.code === 200) {
-      researchDirections.value = res[1].data.data
+    if (res && res.statusCode === 200 && res.data && res.data.code === 200) {
+      researchDirections.value = res.data.data
+      const selectedArea = res.data.data.find(area => area.selected)
+      if (selectedArea) {
+        currentResearch.value = {
+          direction: selectedArea.skillName,
+          directionId: selectedArea.skillId
+        }
+      }
     } else {
-      uni.showToast({ title: '获取研究方向失败', icon: 'none' })
+      const errorMsg = (res && res.data && res.data.message) || '获取研究方向失败'
+      uni.showToast({ title: errorMsg, icon: 'none' })
     }
   } catch (e) {
-    uni.showToast({ title: '网络错误', icon: 'none' })
+    console.error('执行 loadResearchDirections 时发生异常:', e)
+    uni.showToast({ title: '网络错误，请稍后重试', icon: 'none' })
   }
 }
 
 const loadStudentInfo = async () => {
   try {
     const res = await fetchStudentInfo()
-    if (res[1].data.code === 200) {
-      // 修改：根据新的API文档，researchArea现在是单个对象而不是数组
-      const researchArea = res[1].data.data.researchArea
-      currentResearch.value = {
-        direction: researchArea?.name || '',
-        directionId: researchArea?.id || null
+    if (res && res.statusCode === 200 && res.data && res.data.code === 200) {
+      const researchArea = res.data.data.researchArea
+      if (researchArea) {
+        if (!currentResearch.value.directionId) {
+          currentResearch.value = {
+            direction: researchArea.skillName || '',
+            directionId: researchArea.skillId || null
+          }
+        }
       }
     } else {
-      uni.showToast({ title: '获取学生信息失败', icon: 'none' })
+      const errorMsg = (res && res.data && res.data.message) || '获取学生信息失败'
+      uni.showToast({ title: errorMsg, icon: 'none' })
     }
   } catch (e) {
-    uni.showToast({ title: '网络错误', icon: 'none' })
+    console.error('执行 loadStudentInfo 时发生异常:', e)
+    uni.showToast({ title: '网络错误，请稍后重试', icon: 'none' })
   }
 }
 
 const toggleEditMode = () => {
   isEditing.value = true
   const idx = researchDirections.value.findIndex(
-    d => d.id === currentResearch.value.directionId
+    d => d.skillId === currentResearch.value.directionId
   )
   editData.value = {
     direction: currentResearch.value.direction,
@@ -139,9 +143,10 @@ const toggleEditMode = () => {
 
 const onDirectionChange = (e) => {
   const index = e.detail.value
+  const selectedDirection = researchDirections.value[index]
   editData.value.directionIndex = index
-  editData.value.direction = researchDirections.value[index].name
-  editData.value.directionId = researchDirections.value[index].id
+  editData.value.direction = selectedDirection.skillName
+  editData.value.directionId = selectedDirection.skillId
 }
 
 const cancelEdit = () => {
@@ -154,22 +159,30 @@ const saveChanges = async () => {
     uni.showToast({ title: '请选择研究方向', icon: 'none' })
     return
   }
+  
   try {
     uni.showLoading({ title: '保存中...' })
-    // 修改：使用新的单选API，传递单个ID而不是数组
     const res = await updateResearchArea(editData.value.directionId)
     uni.hideLoading()
-    if (res[1].data.code === 200) {
+    
+    if (res && res.statusCode === 200 && res.data && res.data.code === 200) {
       currentResearch.value.direction = editData.value.direction
       currentResearch.value.directionId = editData.value.directionId
+      
+      researchDirections.value.forEach(area => {
+        area.selected = area.skillId === editData.value.directionId
+      })
+      
       isEditing.value = false
       uni.showToast({ title: '保存成功', icon: 'success' })
     } else {
-      uni.showToast({ title: res[1].data.message || '保存失败', icon: 'none' })
+      const errorMsg = (res && res.data && res.data.message) || '保存失败'
+      uni.showToast({ title: errorMsg, icon: 'none' })
     }
   } catch (e) {
     uni.hideLoading()
-    uni.showToast({ title: '网络错误', icon: 'none' })
+    console.error('保存研究方向失败:', e)
+    uni.showToast({ title: '网络错误，请稍后重试', icon: 'none' })
   }
 }
 
@@ -182,13 +195,8 @@ const confirmAndContinue = async () => {
   try {
     uni.showLoading({ title: '确认中...' })
     
-    // 由于确认逻辑现在由前端处理，我们只需要本地标记为已确认
-    // 可以选择将确认状态保存到本地存储
-    uni.setStorageSync('researchAreaConfirmed', {
-      directionId: currentResearch.value.directionId,
-      direction: currentResearch.value.direction,
-      confirmedAt: new Date().toISOString()
-    })
+    // [MODIFIED] 移除了将确认状态保存到本地存储的逻辑
+    // uni.setStorageSync('researchAreaConfirmed', { ... })
     
     isConfirmed.value = true
     uni.hideLoading()
@@ -200,6 +208,7 @@ const confirmAndContinue = async () => {
     
   } catch (e) {
     uni.hideLoading()
+    console.error('确认失败:', e)
     uni.showToast({ title: '确认失败', icon: 'none' })
   }
 }
@@ -208,15 +217,14 @@ onMounted(async () => {
   await loadResearchDirections()
   await loadStudentInfo()
   
-  // 检查是否已经确认过
-  const confirmedData = uni.getStorageSync('researchAreaConfirmed')
-  if (confirmedData && confirmedData.directionId === currentResearch.value.directionId) {
-    isConfirmed.value = true
-  }
+  // [MODIFIED] 移除了从本地存储检查确认状态的逻辑
+  // const confirmedData = uni.getStorageSync('researchAreaConfirmed')
+  // if (confirmedData && ...) { ... }
 })
 </script>
 
 <style scoped>
+/* 样式部分无需修改，此处省略 */
 .preparation-container {
   min-height: 100vh;
   background: #f5f5f7;
