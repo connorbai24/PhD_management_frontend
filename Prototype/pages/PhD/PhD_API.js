@@ -1,6 +1,28 @@
 // 假设 token 來自本地存储或全局状态
 const getToken = () => uni.getStorageSync('token') || '';
 
+// 通用请求处理函数
+const request = (options) => {
+  return new Promise((resolve, reject) => {
+    console.log(`发起API请求: ${options.method} ${options.url}`);
+    uni.request({
+      ...options,
+      header: {
+        'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json',
+        ...options.header
+      },
+      success: (res) => {
+        console.log(`API请求成功 [${options.method} ${options.url}]:`, res);
+        resolve(res);
+      },
+      fail: (err) => {
+        console.error(`API请求失败 [${options.method} ${options.url}]:`, err);
+        reject(err);
+      }
+    });
+  });
+};
 
 /**
  * 获取所有研究方向 (已根据文档修正)
@@ -9,13 +31,9 @@ const getToken = () => uni.getStorageSync('token') || '';
 export const fetchResearchDirections = () => {
   // 根据文档 v1.4，此接口无参数
   const url = '/api/phd/research-areas';
-  return uni.request({
+  return request({
     url: url,
-    method: 'GET',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'GET'
   });
 };
 
@@ -26,13 +44,9 @@ export const fetchResearchDirections = () => {
  * @returns {Promise}
  */
 export const fetchNotices = (page = 1, size = 10) => {
-  return uni.request({
+  return request({
     url: `/api/phd/notices?page=${page}&size=${size}`,
-    method: 'GET',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'GET'
   });
 };
 
@@ -43,24 +57,11 @@ export const fetchNotices = (page = 1, size = 10) => {
  * @returns {Promise}
  */
 export const fetchReviewHistory = (page = 1, size = 10) => {
-  return uni.request({
+  return request({
     url: `/api/phd/review/history?page=${page}&size=${size}`,
-    method: 'GET',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'GET'
   });
 };
-
-// --- 新增接口：根据文档补全 ---
-
-/**
- * [已移除] 获取年审详情
- * 根据文档 v1.3 更新日志，该接口已被移除
- */
-// export const fetchReviewDetails = (reviewId) => { ... };
-
 
 /**
  * 标记通知为已读 (新增)
@@ -68,13 +69,9 @@ export const fetchReviewHistory = (page = 1, size = 10) => {
  * @returns {Promise}
  */
 export const markNoticeAsRead = (noticeId) => {
-  return uni.request({
+  return request({
     url: `/api/phd/notices/${noticeId}/read`,
-    method: 'PUT',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'PUT'
   });
 };
 
@@ -87,14 +84,10 @@ export const markNoticeAsRead = (noticeId) => {
  * @returns {Promise}
  */
 export const updatePassword = (passwordData) => {
-  return uni.request({
+  return request({
     // 根据文档 3.5.1 节修正 URL
     url: '/api/phd/user/password',
     method: 'PUT',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    },
     data: passwordData
   });
 };
@@ -103,52 +96,45 @@ export const updatePassword = (passwordData) => {
 
 // 获取学生信息
 export const fetchStudentInfo = () => {
-  return uni.request({
+  return request({
     url: '/api/phd/student/info',
-    method: 'GET',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'GET'
   });
 };
 
 // [已修改] 更新研究方向 - 改为单选模式
 export const updateResearchArea = (areaId) => {
-  return uni.request({
+  console.log('调用更新研究方向API，原始skillId:', areaId, '类型:', typeof areaId);
+  
+  // 确保skillId是数字类型
+  let skillId = areaId;
+  if (typeof areaId === 'string' && !isNaN(areaId)) {
+    skillId = parseInt(areaId);
+  }
+  
+  const requestData = { skillId: skillId };
+  console.log('发送的请求数据:', requestData);
+  
+  return request({
     url: '/api/phd/student/research-area',
     method: 'PUT',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    },
-    data: {
-      skillId: areaId // 单个ID，不再是数组
-    }
+    data: requestData
   });
 };
 
 // 获取当前年审状态
 export const fetchCurrentReview = () => {
-  return uni.request({
+  return request({
     url: '/api/phd/review/current',
-    method: 'GET',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+    method: 'GET'
   });
 };
 
-// 退出登录 (URL已根据文档修正)
+// 退出登录 (URL已修正为正确的后端路径)
 export const logoutUser = () => {
-  return uni.request({
-    // 根据文档 3.5.2 节修正 URL
-    url: '/api/phd/user/logout',
-    method: 'POST',
-    header: {
-      'Authorization': `Bearer ${getToken()}`,
-      'Content-Type': 'application/json'
-    }
+  return request({
+    // 修正为正确的URL - 根据UserController.java中的@RequestMapping("/users")
+    url: '/api/users/logout',
+    method: 'POST'
   });
 };

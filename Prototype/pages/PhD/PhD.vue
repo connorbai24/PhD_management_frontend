@@ -233,65 +233,177 @@ const viewNoticeDetail = (notice) => {
   })
 }
 
+// 通用的API响应处理函数
+const handleApiResponse = (response, dataType) => {
+  console.log(`${dataType} API原始返回:`, response);
+  
+  if (!response) {
+    throw new Error('API响应为空');
+  }
+  
+  // 检查HTTP状态
+  if (response.statusCode !== 200) {
+    throw new Error(`HTTP状态错误: ${response.statusCode}`);
+  }
+  
+  // 检查响应数据结构
+  if (!response.data) {
+    throw new Error('响应数据为空');
+  }
+  
+  // 检查业务状态码
+  if (response.data.code !== 200) {
+    throw new Error(`业务错误: ${response.data.message || '未知错误'}`);
+  }
+  
+  return response.data.data;
+}
+
 // 初始化数据
 const loadStudentInfo = async () => {
+  console.log('1. 开始加载学生信息...');
   try {
-    const res = await fetchStudentInfo()
-    if (res[1].data.code === 200) {
-      const data = res[1].data.data
+    const response = await fetchStudentInfo();
+    const data = handleApiResponse(response, '学生信息');
+    
+    console.log('1.2 学生信息API成功，解析后的data:', data);
+    
+    if (data) {
+      // 处理研究方向数据 - 如果是对象则取name属性，否则直接使用
+      let researchAreaDisplay = '未设置';
+      if (data.researchAreaName) {
+        researchAreaDisplay = data.researchAreaName;
+      } else if (data.researchArea) {
+        if (typeof data.researchArea === 'object' && data.researchArea.name) {
+          researchAreaDisplay = data.researchArea.name;
+        } else if (typeof data.researchArea === 'string') {
+          researchAreaDisplay = data.researchArea;
+        }
+      }
+      
       studentInfo.value = {
-        name: data.name,
-        studentId: data.studentId,
-        totalReviews: data.totalReviews,
-        currentYear: data.currentYear,
-        researchArea: data.researchArea
-      }
+        name: data.name || '未知',
+        studentId: data.studentId || '未知',
+        totalReviews: data.totalReviews || 0, 
+        currentYear: data.currentYear || '未知',
+        researchArea: researchAreaDisplay
+      };
+      console.log('1.3 更新后的studentInfo.value:', studentInfo.value);
+      console.log('1.4 研究方向原始数据:', data.researchArea);
     } else {
-      uni.showToast({ title: '获取学生信息失败', icon: 'none' })
+      console.log('1.4 学生信息为空，可能用户未绑定PhD信息');
+      uni.showToast({ title: '未找到学生信息', icon: 'none' });
     }
-  } catch (e) {
-    uni.showToast({ title: '网络错误', icon: 'none' })
-  }
-}
-const loadCurrentReview = async () => {
-  try {
-    const res = await fetchCurrentReview()
-    if (res[1].data.code === 200) {
-      const data = res[1].data.data
-      currentReview.value = {
-        status: data.status,
-        scheduled: data.scheduled,
-        date: data.date,
-        time: data.time,
-        location: data.location,
-        assessors: data.assessors || []
-      }
-    } else {
-      uni.showToast({ title: '获取年审状态失败', icon: 'none' })
-    }
-  } catch (e) {
-    uni.showToast({ title: '网络错误', icon: 'none' })
-  }
-}
-const loadNotices = async () => {
-  try {
-    const res = await fetchNotices()
-    if (res[1].data.code === 200) {
-      const list = res[1].data.data.list || []
-      notices.value = list.slice(0, 2)
-      allNotices.value = list
-    } else {
-      uni.showToast({ title: '获取通知失败', icon: 'none' })
-    }
-  } catch (e) {
-    uni.showToast({ title: '网络错误', icon: 'none' })
+    
+  } catch (error) {
+    console.error('1.5 加载学生信息失败:', error);
+    uni.showToast({ 
+      title: `获取学生信息失败: ${error.message}`, 
+      icon: 'none',
+      duration: 3000
+    });
   }
 }
 
+const loadCurrentReview = async () => {
+  console.log('2. 开始加载当前年审状态...');
+  try {
+    const response = await fetchCurrentReview();
+    const data = handleApiResponse(response, '年审状态');
+    
+    console.log('2.2 年审状态API成功，解析后的data:', data);
+    
+    if (data) {
+      currentReview.value = {
+        status: data.status || 'pending',
+        scheduled: data.scheduled || false,
+        date: data.date || '',
+        time: data.time || '',
+        location: data.location || '',
+        assessors: data.assessors || []
+      };
+      console.log('2.3 更新后的currentReview.value:', currentReview.value);
+    }
+    
+  } catch (error) {
+    console.error('2.4 加载年审状态失败:', error);
+    uni.showToast({ 
+      title: `获取年审状态失败: ${error.message}`, 
+      icon: 'none',
+      duration: 3000
+    });
+  }
+}
+
+const loadNotices = async () => {
+  console.log('3. 开始加载通知...');
+  try {
+    const response = await fetchNotices();
+    const data = handleApiResponse(response, '通知');
+    
+    console.log('3.2 通知API成功，解析后的data:', data);
+    
+    // 处理分页数据 - 兼容不同的分页数据结构
+    let list = [];
+    if (data.list) {
+      list = data.list;
+    } else if (data.records) {
+      list = data.records;
+    } else if (Array.isArray(data)) {
+      list = data;
+    } else {
+      console.warn('通知数据结构异常:', data);
+    }
+    
+    notices.value = list.slice(0, 2);
+    allNotices.value = list;
+    
+    console.log('3.3 更新后的notices:', notices.value);
+    console.log('3.4 更新后的allNotices:', allNotices.value);
+    
+  } catch (error) {
+    console.error('3.5 加载通知失败:', error);
+    uni.showToast({ 
+      title: `获取通知失败: ${error.message}`, 
+      icon: 'none',
+      duration: 3000
+    });
+  }
+}
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    console.log('未找到token，跳转到登录页');
+    uni.showModal({
+      title: '提示',
+      content: '请先登录',
+      showCancel: false,
+      success: () => {
+        uni.redirectTo({
+          url: '/pages/login/login'
+        });
+      }
+    });
+    return false;
+  }
+  console.log('Token存在:', token.substring(0, 20) + '...');
+  return true;
+}
+
 onMounted(() => {
-  loadStudentInfo()
-  loadCurrentReview()
-  loadNotices()
+  console.log('页面挂载完毕 (onMounted)，开始初始化所有数据...');
+  
+  // 检查登录状态
+  if (!checkLoginStatus()) {
+    return;
+  }
+  
+  // 加载数据
+  loadStudentInfo();
+  loadCurrentReview();
+  loadNotices();
 })
 </script>
 

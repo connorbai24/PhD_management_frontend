@@ -119,33 +119,145 @@ const userInfo = reactive({
 	avatar: ''
 })
 
+// 通用的API响应处理函数
+const handleApiResponse = (response, dataType) => {
+  console.log(`${dataType} API原始返回:`, response);
+  
+  if (!response) {
+    throw new Error('API响应为空');
+  }
+  
+  // 检查HTTP状态
+  if (response.statusCode !== 200) {
+    throw new Error(`HTTP状态错误: ${response.statusCode}`);
+  }
+  
+  // 检查响应数据结构
+  if (!response.data) {
+    throw new Error('响应数据为空');
+  }
+  
+  // 检查业务状态码
+  if (response.data.code !== 200) {
+    throw new Error(`业务错误: ${response.data.message || '未知错误'}`);
+  }
+  
+  return response.data.data;
+}
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    console.log('未找到token，跳转到登录页');
+    uni.showModal({
+      title: '提示',
+      content: '请先登录',
+      showCancel: false,
+      success: () => {
+        uni.redirectTo({
+          url: '/pages/login/login'
+        });
+      }
+    });
+    return false;
+  }
+  console.log('Token存在，开始加载用户信息');
+  return true;
+}
+
 // 格式化研究方向显示
 const formatResearchAreas = (areas) => {
-	if (!areas || areas.length === 0) {
+	console.log('格式化研究方向数据:', areas);
+	
+	if (!areas) {
 		return '未设置研究方向'
 	}
-	return areas.map(area => area.name).join('、')
+	
+	// 如果是字符串，直接返回
+	if (typeof areas === 'string') {
+		return areas;
+	}
+	
+	// 如果是数组
+	if (Array.isArray(areas)) {
+		if (areas.length === 0) {
+			return '未设置研究方向'
+		}
+		// 处理数组中的每个元素
+		return areas.map(area => {
+			if (typeof area === 'string') {
+				return area;
+			} else if (area && area.name) {
+				return area.name;
+			} else {
+				return '未知方向';
+			}
+		}).join('、')
+	}
+	
+	// 如果是对象
+	if (typeof areas === 'object' && areas.name) {
+		return areas.name;
+	}
+	
+	return '未设置研究方向'
 }
 
 // 加载用户信息
 const loadUserInfo = async () => {
+	console.log('开始加载用户信息...');
+	
+	// 检查登录状态
+	if (!checkLoginStatus()) {
+		return;
+	}
+	
 	try {
-		const res = await fetchStudentInfo()
-		if (res[1].data.code === 200) {
-			const data = res[1].data.data
-			userInfo.name = data.name
-			userInfo.studentId = data.studentId
-			userInfo.researchAreas = data.researchAreas || []
-			userInfo.avatar = '/static/images/default-avatar.png' // 用户不能自己上传头像
+		const response = await fetchStudentInfo();
+		const data = handleApiResponse(response, '用户信息');
+		
+		console.log('用户信息API成功，解析后的data:', data);
+		
+		if (data) {
+			// 处理研究方向数据
+			let researchAreaData = null;
+			if (data.researchAreaName) {
+				researchAreaData = data.researchAreaName;
+			} else if (data.researchArea) {
+				researchAreaData = data.researchArea;
+			} else if (data.researchAreas) {
+				researchAreaData = data.researchAreas;
+			}
+			
+			userInfo.name = data.name || '未知用户';
+			userInfo.studentId = data.studentId || '未知';
+			userInfo.researchAreas = researchAreaData;
+			userInfo.avatar = '/static/images/default-avatar.png'; // 用户不能自己上传头像
+			
+			console.log('更新后的userInfo:', {
+				name: userInfo.name,
+				studentId: userInfo.studentId,
+				researchAreas: userInfo.researchAreas,
+				avatar: userInfo.avatar
+			});
 		} else {
-			uni.showToast({ title: '获取用户信息失败', icon: 'none' })
+			console.log('用户信息为空，可能用户未绑定PhD信息');
+			uni.showToast({ title: '未找到用户信息', icon: 'none' });
 		}
-	} catch (e) {
-		uni.showToast({ title: '网络错误', icon: 'none' })
+		
+	} catch (error) {
+		console.error('加载用户信息失败:', error);
+		uni.showToast({ 
+			title: `获取用户信息失败: ${error.message}`, 
+			icon: 'none',
+			duration: 3000
+		});
 	}
 }
 
 onMounted(() => {
+	console.log('Profile页面挂载完毕');
 	loadUserInfo()
 })
 
@@ -170,20 +282,32 @@ const hideLogoutConfirm = () => {
 }
 
 const confirmLogout = async () => {
+	console.log('开始执行退出登录...');
+	
 	// 执行退出登录API
 	try {
 		await logoutUser()
-	} catch (e) {}
+		console.log('后端退出登录API调用成功');
+	} catch (e) {
+		console.log('后端退出登录API调用失败，但继续执行本地清理:', e);
+	}
+	
 	uni.showToast({
 		title: '退出成功',
 		icon: 'success'
 	})
+	
 	// 清除本地token
 	uni.removeStorageSync('token')
-	// 跳转到登录頁
-	uni.reLaunch({
-		url: '/pages/login/login'
-	})
+	console.log('本地token已清除');
+	
+	// 跳转到登录页
+	setTimeout(() => {
+		uni.reLaunch({
+			url: '/pages/login/login'
+		})
+	}, 1500);
+	
 	showLogoutModal.value = false
 }
 

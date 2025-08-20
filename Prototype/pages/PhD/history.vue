@@ -106,19 +106,76 @@ const navigateTo = (url) => {
   })
 }
 
+// 通用的API响应处理函数
+const handleApiResponse = (response, dataType) => {
+  console.log(`${dataType} API原始返回:`, response);
+  
+  if (!response) {
+    throw new Error('API响应为空');
+  }
+  
+  // 检查HTTP状态
+  if (response.statusCode !== 200) {
+    throw new Error(`HTTP状态错误: ${response.statusCode}`);
+  }
+  
+  // 检查响应数据结构
+  if (!response.data) {
+    throw new Error('响应数据为空');
+  }
+  
+  // 检查业务状态码
+  if (response.data.code !== 200) {
+    throw new Error(`业务错误: ${response.data.message || '未知错误'}`);
+  }
+  
+  return response.data.data;
+}
+
+// 检查登录状态
+const checkLoginStatus = () => {
+  const token = uni.getStorageSync('token');
+  if (!token) {
+    console.log('未找到token，跳转到登录页');
+    uni.showModal({
+      title: '提示',
+      content: '请先登录',
+      showCancel: false,
+      success: () => {
+        uni.redirectTo({
+          url: '/pages/login/login'
+        });
+      }
+    });
+    return false;
+  }
+  console.log('Token存在，开始加载历史数据');
+  return true;
+}
+
 // 加载历史数据
 const loadHistoryData = async () => {
+  console.log('开始加载年审历史数据...');
+  
+  // 检查登录状态
+  if (!checkLoginStatus()) {
+    return;
+  }
+  
   uni.showLoading({
     title: '加载中...'
   })
+  
   try {
     await fetchHistoryData()
     calculateStats()
+    console.log('历史数据加载完成');
   } catch (error) {
     console.error('加载历史数据失败:', error)
     uni.showToast({
-      title: '加载失败',
-      icon: 'error'
+      title: `加载失败: ${error.message}`,
+      icon: 'none',
+      duration: 3000
     })
   } finally {
     uni.hideLoading()
@@ -128,27 +185,58 @@ const loadHistoryData = async () => {
 
 // 获取历史数据
 const fetchHistoryData = async () => {
-  // 调用API
-  const res = await fetchReviewHistory()
-  if (res[1].data.code === 200) {
-    historyList.value = res[1].data.data.list || []
-  } else {
-    historyList.value = []
-    uni.showToast({ title: '获取历史记录失败', icon: 'none' })
+  console.log('调用年审历史API...');
+  try {
+    // 调用API - 修复数据解析问题
+    const response = await fetchReviewHistory();
+    const data = handleApiResponse(response, '年审历史');
+    
+    console.log('年审历史API成功，解析后的data:', data);
+    
+    // 处理分页数据 - 兼容不同的分页数据结构
+    let list = [];
+    if (data.list) {
+      list = data.list;
+    } else if (data.records) {
+      list = data.records;
+    } else if (Array.isArray(data)) {
+      list = data;
+    } else {
+      console.warn('年审历史数据结构异常:', data);
+      list = [];
+    }
+    
+    historyList.value = list;
+    console.log('更新后的historyList:', historyList.value);
+    
+  } catch (error) {
+    console.error('获取年审历史失败:', error);
+    historyList.value = [];
+    throw error; // 重新抛出错误，让上级处理
   }
 }
 
 // 计算统计数据
 const calculateStats = () => {
+  console.log('开始计算统计数据...');
+  
   totalReviews.value = historyList.value.length
   completedReviews.value = historyList.value.filter(item => item.status === 'completed').length
   
   if (completedReviews.value > 0) {
     const totalScore = historyList.value
-      .filter(item => item.score)
-      .reduce((sum, item) => sum + item.score, 0)
-    averageScore.value = Math.round(totalScore / completedReviews.value)
+      .filter(item => item.score && !isNaN(item.score))
+      .reduce((sum, item) => sum + Number(item.score), 0)
+    averageScore.value = completedReviews.value > 0 ? Math.round(totalScore / completedReviews.value) : 0
+  } else {
+    averageScore.value = 0
   }
+  
+  console.log('统计数据:', {
+    totalReviews: totalReviews.value,
+    completedReviews: completedReviews.value,
+    averageScore: averageScore.value
+  });
 }
 
 // 获取状态文本
@@ -164,8 +252,14 @@ const getStatusText = (status) => {
 
 // 下拉刷新实际调用
 const refreshData = () => {
+  console.log('执行下拉刷新...');
   loadHistoryData()
 }
+
+// 页面挂载时加载数据
+onMounted(() => {
+  console.log('History页面挂载完毕');
+})
 </script>
 
 
