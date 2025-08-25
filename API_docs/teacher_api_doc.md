@@ -1,4 +1,4 @@
-# 评审日程系统接口文档
+# Teacher模块接口文档
 
 ## 1. 概述
 
@@ -6,43 +6,52 @@
 
 ### 1.1 基础信息
 
-- **接口域名**: `https://api.review-system.com`
-- **API版本**: `v1`
-- **接口前缀**: `/api/v1`
+- **基础URL**: `http://localhost:8080`
+- **接口版本**: v1.1
 - **数据格式**: JSON
 - **字符编码**: UTF-8
 
-### 1.2 通用响应格式
+### 1.2 认证方式
+
+所有接口请求需要在Header中携带认证信息：
+
+```
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+### 1.3 通用响应格式
 
 ```json
 {
   "code": 200,
   "message": "success",
   "data": {},
-  "timestamp": 1690876800000
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
-### 1.3 状态码说明
+### 1.4 状态码说明
 
-| 状态码 | 说明 |
-|--------|------|
-| 200 | 请求成功 |
-| 400 | 请求参数错误 |
-| 401 | 未授权 |
-| 403 | 权限不足 |
-| 404 | 资源不存在 |
-| 500 | 服务器内部错误 |
+| 状态码 | 说明           |
+| ------ | -------------- |
+| 200    | 请求成功       |
+| 400    | 请求参数错误   |
+| 401    | 未授权         |
+| 403    | 权限不足       |
+| 404    | 资源不存在     |
+| 500    | 服务器内部错误 |
 
 ## 2. 时间配置管理接口
 
 ### 2.1 获取当前时间配置
 
-**接口地址**: `GET /api/v1/time-config`
+**接口地址**: `GET /teacher/time-config`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -85,17 +94,19 @@
       }
     },
     "totalSlots": 8
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 2.2 更新全局评审设置（管理员）
 
-**接口地址**: `PUT /api/v1/admin/global-settings`
+**接口地址**: `PUT /teacher/admin/global-settings`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
+
 ```json
 {
   "slotDuration": 45,
@@ -104,12 +115,14 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| slotDuration | number | 是 | 每场评审时长（分钟），1-180 |
-| breakTime | number | 是 | 场次间隔时间（分钟），0-60 |
+
+| 参数         | 类型   | 必填 | 说明                        |
+| ------------ | ------ | ---- | --------------------------- |
+| slotDuration | number | 是   | 每场评审时长（分钟），1-180 |
+| breakTime    | number | 是   | 场次间隔时间（分钟），0-60  |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -121,17 +134,19 @@
       "isValid": true,
       "errors": []
     }
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 2.3 更新日期配置（管理员）
 
-**接口地址**: `PUT /api/v1/admin/date-configs`
+**接口地址**: `PUT /teacher/admin/date-configs`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
+
 ```json
 {
   "dateConfigs": [
@@ -152,15 +167,30 @@
 ```
 
 **参数说明**:
-- `dateConfigs`: 日期配置数组
+
+- ```
+  dateConfigs
+  ```
+
+  : 日期配置数组
+
   - `date`: 日期（YYYY-MM-DD格式）
+
   - `displayDate`: 显示用日期字符串
-  - `morning`: 上午时间段配置，可选
+
+  - ```
+    morning
+    ```
+
+    : 上午时间段配置，可选
+
     - `startTime`: 开始时间（HH:MM格式）
     - `endTime`: 结束时间（HH:MM格式）
+
   - `afternoon`: 下午时间段配置，可选
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -183,17 +213,19 @@
       "isValid": true,
       "errors": []
     }
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 2.4 验证时间配置
 
-**接口地址**: `POST /api/v1/admin/validate-config`
+**接口地址**: `POST /teacher/admin/validate-config`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
+
 ```json
 {
   "globalSettings": {
@@ -214,6 +246,7 @@
 ```
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -242,7 +275,8 @@
         ]
       }
     }
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -250,11 +284,12 @@
 
 ### 3.1 获取用户时间选择
 
-**接口地址**: `GET /api/v1/user/time-selection`
+**接口地址**: `GET /teacher/user/time-selection`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -266,18 +301,20 @@
       "2025-06-26-morning-2",
       "2025-06-26-afternoon-1"
     ],
-    "lastUpdated": "2025-06-20T10:30:00.000Z",
-    "deadline": "2025-08-25T18:00:00.000Z",
+    "lastUpdated": "2025-06-20T10:30:00Z",
+    "deadline": "2025-08-25T18:00:00Z",
     "isDeadlinePassed": false
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 3.2 保存用户时间选择
 
-**接口地址**: `POST /api/v1/user/time-selection`
+**接口地址**: `POST /teacher/user/time-selection`
 
 **请求参数**:
+
 ```json
 {
   "selectedSlots": [
@@ -289,11 +326,13 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| selectedSlots | array | 是 | 选中的时间段ID数组，格式：日期-时段-序号 |
+
+| 参数          | 类型  | 必填 | 说明                                     |
+| ------------- | ----- | ---- | ---------------------------------------- |
+| selectedSlots | array | 是   | 选中的时间段ID数组，格式：日期-时段-序号 |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -305,26 +344,28 @@
       "2025-06-26-morning-2",
       "2025-06-26-afternoon-1"
     ],
-    "savedAt": "2025-06-20T10:30:00.000Z",
+    "savedAt": "2025-06-20T10:30:00Z",
     "totalSelected": 3
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 3.3 获取选择截止时间
 
-**接口地址**: `GET /api/v1/deadline`
+**接口地址**: `GET /teacher/deadline`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
   "message": "success",
   "data": {
-    "deadline": "2025-08-25T18:00:00.000Z",
-    "currentTime": "2025-06-20T10:30:00.000Z",
+    "deadline": "2025-08-25T18:00:00Z",
+    "currentTime": "2025-06-20T10:30:00Z",
     "isDeadlinePassed": false,
     "remainingTime": {
       "days": 66,
@@ -333,7 +374,8 @@
     },
     "formattedDeadline": "2025/08/25 18:00",
     "countdownText": "66天7小时30分钟"
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -341,11 +383,12 @@
 
 ### 4.1 获取用户评审任务
 
-**接口地址**: `GET /api/v1/user/review-tasks`
+**接口地址**: `GET /teacher/user/review-tasks`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -370,20 +413,23 @@
     ],
     "totalTasks": 1,
     "upcomingTasks": 1
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 4.2 更新评审任务状态
 
-**接口地址**: `PUT /api/v1/user/review-tasks/{taskId}/status`
+**接口地址**: `PUT /teacher/user/review-tasks/{taskId}/status`
 
 **路径参数**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| taskId | number | 是 | 任务ID |
+
+| 参数   | 类型   | 必填 | 说明   |
+| ------ | ------ | ---- | ------ |
+| taskId | number | 是   | 任务ID |
 
 **请求参数**:
+
 ```json
 {
   "status": "completed",
@@ -392,12 +438,14 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| status | string | 是 | 任务状态：pending/in-progress/completed/cancelled |
-| notes | string | 否 | 备注信息 |
+
+| 参数   | 类型   | 必填 | 说明                                              |
+| ------ | ------ | ---- | ------------------------------------------------- |
+| status | string | 是   | 任务状态：pending/in-progress/completed/cancelled |
+| notes  | string | 否   | 备注信息                                          |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -406,8 +454,9 @@
     "taskId": 1,
     "status": "completed",
     "notes": "评审完成，学生表现良好",
-    "updatedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "updatedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -415,16 +464,18 @@
 
 ### 5.1 获取用户通知
 
-**接口地址**: `GET /api/v1/user/notifications`
+**接口地址**: `GET /teacher/user/notifications`
 
 **请求参数**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| page | number | 否 | 页码，默认1 |
-| limit | number | 否 | 每页数量，默认20 |
-| unreadOnly | boolean | 否 | 仅未读通知，默认false |
+
+| 参数       | 类型    | 必填 | 说明                  |
+| ---------- | ------- | ---- | --------------------- |
+| page       | number  | 否   | 页码，默认1           |
+| limit      | number  | 否   | 每页数量，默认20      |
+| unreadOnly | boolean | 否   | 仅未读通知，默认false |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -440,7 +491,7 @@
         "extraInfo": "学生：李明 | 地点：科研楼A座301",
         "time": "2小时前",
         "isRead": false,
-        "createdAt": "2025-06-20T10:30:00.000Z"
+        "createdAt": "2025-06-20T10:30:00Z"
       },
       {
         "id": 2,
@@ -451,7 +502,7 @@
         "extraInfo": null,
         "time": "5小时前",
         "isRead": false,
-        "createdAt": "2025-06-20T05:30:00.000Z"
+        "createdAt": "2025-06-20T05:30:00Z"
       },
       {
         "id": 3,
@@ -462,7 +513,7 @@
         "extraInfo": "学生：张小雨 | 时间：11:15-12:00",
         "time": "1天前",
         "isRead": true,
-        "createdAt": "2025-06-19T10:30:00.000Z"
+        "createdAt": "2025-06-19T10:30:00Z"
       },
       {
         "id": 4,
@@ -473,7 +524,7 @@
         "extraInfo": "请及时查看最新评审要求",
         "time": "2天前",
         "isRead": true,
-        "createdAt": "2025-06-18T10:30:00.000Z"
+        "createdAt": "2025-06-18T10:30:00Z"
       }
     ],
     "pagination": {
@@ -483,22 +534,25 @@
       "totalPages": 1
     },
     "unreadCount": 2
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 5.2 标记通知为已读
 
-**接口地址**: `PUT /api/v1/user/notifications/{notificationId}/read`
+**接口地址**: `PUT /teacher/user/notifications/{notificationId}/read`
 
 **路径参数**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| notificationId | number | 是 | 通知ID |
+
+| 参数           | 类型   | 必填 | 说明   |
+| -------------- | ------ | ---- | ------ |
+| notificationId | number | 是   | 通知ID |
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -506,18 +560,39 @@
   "data": {
     "notificationId": 1,
     "isRead": true,
-    "readAt": "2025-06-20T10:30:00.000Z"
-  }
+    "readAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
-### 5.3 检查新通知
+### 5.3 全部标记为已读
 
-**接口地址**: `GET /api/v1/user/notifications/check`
+**接口地址**: `PUT /teacher/user/notifications/mark-all-read`
 
 **请求参数**: 无
 
 **响应示例**:
+```json
+{
+  "code": 200,
+  "message": "全部通知已标记为已读",
+  "data": {
+    "updatedCount": 5,
+    "updatedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
+}
+```
+
+### 5.4 检查新通知
+
+**接口地址**: `GET /teacher/user/notifications/check`
+
+**请求参数**: 无
+
+**响应示例**:
+
 ```json
 {
   "code": 200,
@@ -529,9 +604,10 @@
       "id": 1,
       "type": "schedule_update",
       "title": "评审时间安排更新",
-      "createdAt": "2025-06-20T10:30:00.000Z"
+      "createdAt": "2025-06-20T10:30:00Z"
     }
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -539,11 +615,12 @@
 
 ### 6.1 获取教师基本信息
 
-**接口地址**: `GET /api/v1/teacher/profile`
+**接口地址**: `GET /teacher/profile`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -556,19 +633,21 @@
         "id": 1,
         "name": "机器学习与人工智能",
         "status": "approved",
-        "createdAt": "2025-06-20T10:30:00.000Z"
+        "createdAt": "2025-06-20T10:30:00Z"
       }
     ],
-    "lastLoginAt": "2025-06-20T09:00:00.000Z"
-  }
+    "lastLoginAt": "2025-06-20T09:00:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 6.2 更新教师基本信息
 
-**接口地址**: `PUT /api/v1/teacher/profile`
+**接口地址**: `PUT /teacher/profile`
 
 **请求参数**:
+
 ```json
 {
   "name": "王伟"
@@ -576,19 +655,22 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 否 | 教师姓名 |
+
+| 参数 | 类型   | 必填 | 说明     |
+| ---- | ------ | ---- | -------- |
+| name | string | 否   | 教师姓名 |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
   "message": "个人信息更新成功",
   "data": {
     "name": "王伟",
-    "updatedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "updatedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -596,11 +678,12 @@
 
 ### 7.1 获取教师研究方向
 
-**接口地址**: `GET /api/v1/teacher/research-areas`
+**接口地址**: `GET /teacher/research-areas`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -611,29 +694,31 @@
         "id": 1,
         "name": "机器学习与人工智能",
         "status": "approved",
-        "createdAt": "2025-06-20T10:30:00.000Z",
-        "approvedAt": "2025-06-21T14:20:00.000Z"
+        "createdAt": "2025-06-20T10:30:00Z",
+        "approvedAt": "2025-06-21T14:20:00Z"
       },
       {
         "id": 2,
         "name": "计算机视觉",
         "status": "pending",
-        "createdAt": "2025-06-22T16:15:00.000Z",
+        "createdAt": "2025-06-22T16:15:00Z",
         "approvedAt": null
       }
     ],
     "totalCount": 2,
     "pendingCount": 1,
     "approvedCount": 1
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 7.2 添加研究方向
 
-**接口地址**: `POST /api/v1/teacher/research-areas`
+**接口地址**: `POST /teacher/research-areas`
 
 **请求参数**:
+
 ```json
 {
   "name": "自然语言处理"
@@ -641,11 +726,13 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| name | string | 是 | 研究方向名称，2-50个字符 |
+
+| 参数 | 类型   | 必填 | 说明                     |
+| ---- | ------ | ---- | ------------------------ |
+| name | string | 是   | 研究方向名称，2-50个字符 |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -654,41 +741,46 @@
     "id": 3,
     "name": "自然语言处理",
     "status": "pending",
-    "createdAt": "2025-06-20T10:30:00.000Z"
-  }
+    "createdAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 7.3 删除研究方向
 
-**接口地址**: `DELETE /api/v1/teacher/research-areas/{areaId}`
+**接口地址**: `DELETE /teacher/research-areas/{areaId}`
 
 **路径参数**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| areaId | number | 是 | 研究方向ID |
+
+| 参数   | 类型   | 必填 | 说明       |
+| ------ | ------ | ---- | ---------- |
+| areaId | number | 是   | 研究方向ID |
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
   "message": "研究方向删除成功",
   "data": {
     "deletedId": 3,
-    "deletedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "deletedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 7.4 获取可选研究方向列表
 
-**接口地址**: `GET /api/v1/research-directions`
+**接口地址**: `GET /teacher/research-directions`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -706,7 +798,8 @@
       "算法设计与分析",
       "云计算与边缘计算"
     ]
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -714,11 +807,12 @@
 
 ### 8.1 获取当前研究方向信息
 
-**接口地址**: `GET /api/v1/teacher/research-confirmation`
+**接口地址**: `GET /teacher/research-confirmation`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -726,16 +820,18 @@
   "data": {
     "direction": "机器学习与人工智能",
     "isConfirmed": false,
-    "lastUpdated": "2025-06-20T10:30:00.000Z"
-  }
+    "lastUpdated": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 8.2 保存研究方向确认
 
-**接口地址**: `POST /api/v1/teacher/research-confirmation`
+**接口地址**: `POST /teacher/research-confirmation`
 
 **请求参数**:
+
 ```json
 {
   "direction": "机器学习与人工智能"
@@ -743,11 +839,13 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| direction | string | 是 | 确认的研究方向 |
+
+| 参数      | 类型   | 必填 | 说明           |
+| --------- | ------ | ---- | -------------- |
+| direction | string | 是   | 确认的研究方向 |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -755,16 +853,18 @@
   "data": {
     "direction": "机器学习与人工智能",
     "isConfirmed": true,
-    "confirmedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "confirmedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 8.3 申请自定义研究方向
 
-**接口地址**: `POST /api/v1/teacher/custom-research-direction`
+**接口地址**: `POST /teacher/custom-research-direction`
 
 **请求参数**:
+
 ```json
 {
   "customDirection": "量子计算与算法"
@@ -772,11 +872,13 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| customDirection | string | 是 | 自定义研究方向名称 |
+
+| 参数            | 类型   | 必填 | 说明               |
+| --------------- | ------ | ---- | ------------------ |
+| customDirection | string | 是   | 自定义研究方向名称 |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -785,8 +887,9 @@
     "applicationId": 123,
     "direction": "量子计算与算法",
     "status": "pending",
-    "submittedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "submittedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -794,9 +897,10 @@
 
 ### 9.1 修改密码
 
-**接口地址**: `PUT /api/v1/user/password`
+**接口地址**: `PUT /teacher/user/password`
 
 **请求参数**:
+
 ```json
 {
   "currentPassword": "oldPassword123",
@@ -806,20 +910,23 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| currentPassword | string | 是 | 当前密码 |
-| newPassword | string | 是 | 新密码，6-20位 |
-| confirmPassword | string | 是 | 确认新密码 |
+
+| 参数            | 类型   | 必填 | 说明           |
+| --------------- | ------ | ---- | -------------- |
+| currentPassword | string | 是   | 当前密码       |
+| newPassword     | string | 是   | 新密码，6-20位 |
+| confirmPassword | string | 是   | 确认新密码     |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
   "message": "密码修改成功",
   "data": {
-    "updatedAt": "2025-06-20T10:30:00.000Z"
-  }
+    "updatedAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -827,9 +934,10 @@
 
 ### 10.1 用户登录
 
-**接口地址**: `POST /api/v1/auth/login`
+**接口地址**: `POST /auth/login`
 
 **请求参数**:
+
 ```json
 {
   "username": "teacher001",
@@ -839,13 +947,15 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| username | string | 是 | 用户名 |
-| password | string | 是 | 密码 |
-| userType | string | 是 | 用户类型：teacher/student |
+
+| 参数     | 类型   | 必填 | 说明                      |
+| -------- | ------ | ---- | ------------------------- |
+| username | string | 是   | 用户名                    |
+| password | string | 是   | 密码                      |
+| userType | string | 是   | 用户类型：teacher/student |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -865,32 +975,36 @@
       ]
     },
     "expiresIn": 86400
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 10.2 用户登出
 
-**接口地址**: `POST /api/v1/auth/logout`
+**接口地址**: `POST /auth/logout`
 
 **请求参数**: 无
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
   "message": "登出成功",
   "data": {
-    "logoutAt": "2025-06-20T10:30:00.000Z"
-  }
+    "logoutAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 10.3 刷新Token
 
-**接口地址**: `POST /api/v1/auth/refresh`
+**接口地址**: `POST /auth/refresh`
 
 **请求参数**:
+
 ```json
 {
   "refreshToken": "refresh_token_string"
@@ -898,6 +1012,7 @@
 ```
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -906,7 +1021,8 @@
     "token": "new_access_token",
     "refreshToken": "new_refresh_token",
     "expiresIn": 86400
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -914,11 +1030,14 @@
 
 ### 11.1 连接地址
 
-`wss://api.review-system.com/ws`
+```
+ws://localhost:8080/ws
+```
 
 ### 11.2 消息格式
 
 **服务端推送**:
+
 ```json
 {
   "type": "notification",
@@ -927,12 +1046,13 @@
     "type": "schedule_update",
     "title": "评审时间安排更新",
     "content": "管理员已更新评审时间配置",
-    "timestamp": 1690876800000
+    "timestamp": "2025-08-21T13:00:00Z"
   }
 }
 ```
 
 **配置更新推送**:
+
 ```json
 {
   "type": "config_update",
@@ -944,12 +1064,13 @@
       }
     },
     "totalSlots": 8,
-    "timestamp": 1690876800000
+    "timestamp": "2025-08-21T13:00:00Z"
   }
 }
 ```
 
 **研究方向审核结果推送**:
+
 ```json
 {
   "type": "research_area_approved",
@@ -957,8 +1078,8 @@
     "areaId": 2,
     "name": "计算机视觉",
     "status": "approved",
-    "approvedAt": "2025-06-20T10:30:00.000Z",
-    "timestamp": 1690876800000
+    "approvedAt": "2025-06-20T10:30:00Z",
+    "timestamp": "2025-08-21T13:00:00Z"
   }
 }
 ```
@@ -967,16 +1088,18 @@
 
 ### 12.1 获取所有用户时间选择统计
 
-**接口地址**: `GET /api/v1/admin/time-selection-stats`
+**接口地址**: `GET /teacher/admin/time-selection-stats`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| date | string | 否 | 指定日期过滤，格式YYYY-MM-DD |
+
+| 参数 | 类型   | 必填 | 说明                         |
+| ---- | ------ | ---- | ---------------------------- |
+| date | string | 否   | 指定日期过滤，格式YYYY-MM-DD |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -996,19 +1119,21 @@
         "availableUsers": ["user1", "user2"]
       }
     },
-    "deadline": "2025-08-25T18:00:00.000Z",
+    "deadline": "2025-08-25T18:00:00Z",
     "isDeadlinePassed": false
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 12.2 生成评审任务分配
 
-**接口地址**: `POST /api/v1/admin/generate-assignments`
+**接口地址**: `POST /teacher/admin/generate-assignments`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
+
 ```json
 {
   "students": [
@@ -1035,6 +1160,7 @@
 ```
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -1067,17 +1193,19 @@
       "failedAssignments": 0,
       "conflicts": []
     }
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 ### 12.3 发送系统通知
 
-**接口地址**: `POST /api/v1/admin/notifications`
+**接口地址**: `POST /teacher/admin/notifications`
 
 **权限要求**: 管理员权限
 
 **请求参数**:
+
 ```json
 {
   "type": "schedule_update",
@@ -1089,15 +1217,17 @@
 ```
 
 **参数说明**:
-| 参数 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| type | string | 是 | 通知类型：schedule_update/task_assigned/deadline_reminder等 |
-| title | string | 是 | 通知标题 |
-| content | string | 是 | 通知内容 |
-| recipients | array | 是 | 接收者，["all"]表示所有用户，或具体用户ID数组 |
-| priority | string | 否 | 优先级：low/normal/high，默认normal |
+
+| 参数       | 类型   | 必填 | 说明                                                        |
+| ---------- | ------ | ---- | ----------------------------------------------------------- |
+| type       | string | 是   | 通知类型：schedule_update/task_assigned/deadline_reminder等 |
+| title      | string | 是   | 通知标题                                                    |
+| content    | string | 是   | 通知内容                                                    |
+| recipients | array  | 是   | 接收者，["all"]表示所有用户，或具体用户ID数组               |
+| priority   | string | 否   | 优先级：low/normal/high，默认normal                         |
 
 **响应示例**:
+
 ```json
 {
   "code": 200,
@@ -1106,8 +1236,9 @@
     "notificationId": 123,
     "sentTo": 50,
     "failed": 0,
-    "sentAt": "2025-06-20T10:30:00.000Z"
-  }
+    "sentAt": "2025-06-20T10:30:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
@@ -1116,6 +1247,7 @@
 ### 13.1 常见错误响应
 
 **配置验证失败**:
+
 ```json
 {
   "code": 400,
@@ -1125,89 +1257,39 @@
       "评审时长必须大于0分钟",
       "第1天 上午时间段太短，无法安排一场评审（需要至少45分钟）"
     ]
-  }
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 **权限不足**:
+
 ```json
 {
   "code": 403,
   "message": "权限不足，需要管理员权限",
-  "data": null
+  "data": null,
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
 **截止时间已过**:
+
 ```json
 {
   "code": 400,
   "message": "时间选择截止时间已过，无法修改",
   "data": {
-    "deadline": "2025-08-25T18:00:00.000Z",
-    "currentTime": "2025-08-26T10:00:00.000Z"
-  }
+    "deadline": "2025-08-25T18:00:00Z",
+    "currentTime": "2025-08-26T10:00:00Z"
+  },
+  "timestamp": "2025-08-21T13:00:00Z"
 }
 ```
 
-## 14. 认证和权限
+## 14. 数据模型
 
-### 14.1 请求头
-
-所有需要认证的接口都需要在请求头中包含：
-
-```
-Authorization: Bearer {token}
-Content-Type: application/json
-```
-
-### 14.2 权限级别
-
-- **普通用户**: 可以查看和修改自己的时间选择、查看评审任务、接收通知
-- **管理员**: 拥有所有权限，包括配置管理、任务分配、统计查看等
-
-## 15. WebSocket实时通知
-
-### 15.1 连接地址
-
-`wss://api.review-system.com/ws`
-
-### 15.2 消息格式
-
-**服务端推送**:
-```json
-{
-  "type": "notification",
-  "data": {
-    "id": 123,
-    "type": "schedule_update",
-    "title": "评审时间安排更新",
-    "content": "管理员已更新评审时间配置",
-    "timestamp": 1690876800000
-  }
-}
-```
-
-**配置更新推送**:
-```json
-{
-  "type": "config_update",
-  "data": {
-    "timeConfig": {
-      "day1": {
-        "date": "2025-06-26",
-        "displayDate": "2025/06/26周四"
-      }
-    },
-    "totalSlots": 8,
-    "timestamp": 1690876800000
-  }
-}
-```
-
-## 16. 数据模型
-
-### 16.1 时间配置模型
+### 14.1 时间配置模型
 
 ```typescript
 interface GlobalSettings {
@@ -1235,7 +1317,7 @@ interface GeneratedTimeSlot {
 }
 ```
 
-### 16.2 评审任务模型
+### 14.2 评审任务模型
 
 ```typescript
 interface ReviewTask {
@@ -1251,7 +1333,7 @@ interface ReviewTask {
 }
 ```
 
-### 16.3 通知模型
+### 14.3 通知模型
 
 ```typescript
 interface Notification {
@@ -1265,7 +1347,162 @@ interface Notification {
 }
 ```
 
----
+## 15. 接口调用示例
 
-*文档版本: v1.0*  
-*最后更新: 2025-07-31*
+### 15.1 JavaScript示例
+
+```javascript
+// 获取教师信息
+const getTeacherInfo = async () => {
+  try {
+    const response = await fetch('http://localhost:8080/teacher/profile', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const result = await response.json();
+    if (result.code === 200) {
+      console.log('教师信息:', result.data);
+    }
+  } catch (error) {
+    console.error('请求失败:', error);
+  }
+};
+
+// 获取研究方向列表
+const getResearchDirections = async () => {
+  try {
+    const response = await fetch('http://localhost:8080/teacher/research-directions', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    const result = await response.json();
+    if (result.code === 200) {
+      console.log('研究方向列表:', result.data);
+    }
+  } catch (error) {
+    console.error('请求失败:', error);
+  }
+};
+
+// 保存时间选择
+const saveTimeSelection = async (selectedSlots) => {
+  try {
+    const response = await fetch('http://localhost:8080/teacher/user/time-selection', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        selectedSlots: selectedSlots
+      })
+    });
+    const result = await response.json();
+    if (result.code === 200) {
+      console.log('保存成功:', result.data);
+    }
+  } catch (error) {
+    console.error('保存失败:', error);
+  }
+};
+```
+
+### 15.2 uni-app示例
+
+```javascript
+// 获取评审任务
+const getReviewTasks = () => {
+  uni.request({
+    url: 'http://localhost:8080/teacher/user/review-tasks',
+    method: 'GET',
+    header: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    success: (res) => {
+      if (res.data.code === 200) {
+        console.log('评审任务:', res.data.data);
+      }
+    },
+    fail: (error) => {
+      console.error('请求失败:', error);
+    }
+  });
+};
+
+// 获取通知列表
+const getNotifications = () => {
+  uni.request({
+    url: 'http://localhost:8080/teacher/user/notifications',
+    method: 'GET',
+    header: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    success: (res) => {
+      if (res.data.code === 200) {
+        console.log('通知列表:', res.data.data);
+        res.data.data.notifications.forEach(notification => {
+          if (!notification.isRead) {
+            console.log('未读通知:', notification.title);
+          }
+        });
+      }
+    },
+    fail: (error) => {
+      console.error('请求失败:', error);
+    }
+  });
+};
+
+// 确认研究方向
+const confirmResearchDirection = (direction) => {
+  uni.request({
+    url: 'http://localhost:8080/teacher/research-confirmation',
+    method: 'POST',
+    header: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    data: {
+      direction: direction
+    },
+    success: (res) => {
+      if (res.data.code === 200) {
+        console.log('研究方向确认成功:', res.data.data);
+      }
+    },
+    fail: (error) => {
+      console.error('确认失败:', error);
+    }
+  });
+};
+```
+
+## 16. 注意事项
+
+1. **认证**: 所有接口都需要在请求头中携带有效的Bearer Token
+2. **数据验证**: 请求参数需要进行前端验证，确保数据格式正确
+3. **错误处理**: 需要根据返回的错误码进行相应的错误处理
+4. **分页**: 列表接口支持分页，建议使用分页加载优化用户体验
+5. **缓存**: 可以对一些不常变化的数据（如研究方向列表）进行本地缓存
+6. **超时**: 建议设置合理的请求超时时间（如10秒）
+7. **重试**: 对于网络错误，可以实现自动重试机制
+8. **时间格式**: 所有时间都采用ISO 8601格式（YYYY-MM-DDTHH:mm:ssZ）
+9. **WebSocket**: 建议使用WebSocket接收实时通知，减少轮询请求
+10. **权限管理**: 严格区分普通用户和管理员权限，避免越权操作
+
+## 17. 更新日志
+
+| 版本 | 更新时间   | 更新内容                     |
+| ---- | ---------- | ---------------------------- |
+| v1.0 | 2025-07-31 | 初始版本，包含基础功能接口   |
+| v1.1 | 2025-08-21 | 添加"全部标记通知为已读"接口 |
+
+*本文档最后更新时间：2025-08-21*
