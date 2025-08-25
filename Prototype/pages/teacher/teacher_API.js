@@ -49,47 +49,6 @@ export const fetchTimeConfig = () => {
   });
 };
 
-/**
- * 更新全局评审设置（管理员）
- * @param {object} settings - 全局设置
- * @param {number} settings.slotDuration - 每场评审时长（分钟）
- * @param {number} settings.breakTime - 场次间隔时间（分钟）
- * @returns {Promise}
- */
-export const updateGlobalSettings = (settings) => {
-  return request({
-    url: '/teacher/admin/global-settings',
-    method: 'PUT',
-    data: settings
-  });
-};
-
-/**
- * 更新日期配置（管理员）
- * @param {array} dateConfigs - 日期配置数组
- * @returns {Promise}
- */
-export const updateDateConfigs = (dateConfigs) => {
-  return request({
-    url: '/teacher/admin/date-configs',
-    method: 'PUT',
-    data: { dateConfigs }
-  });
-};
-
-/**
- * 验证时间配置
- * @param {object} config - 配置对象
- * @returns {Promise}
- */
-export const validateTimeConfig = (config) => {
-  return request({
-    url: '/teacher/admin/validate-config',
-    method: 'POST',
-    data: config
-  });
-};
-
 // ===================== 2. 用户时间选择接口 =====================
 
 /**
@@ -215,20 +174,6 @@ export const fetchTeacherProfile = () => {
   return request({
     url: '/teacher/profile',
     method: 'GET'
-  });
-};
-
-/**
- * 更新教师基本信息
- * @param {object} profileData - 教师信息
- * @param {string} profileData.name - 教师姓名
- * @returns {Promise}
- */
-export const updateTeacherProfile = (profileData) => {
-  return request({
-    url: '/teacher/profile',
-    method: 'PUT',
-    data: profileData
   });
 };
 
@@ -376,47 +321,6 @@ export const refreshToken = (refreshToken) => {
     url: '/auth/refresh',
     method: 'POST',
     data: { refreshToken }
-  });
-};
-
-// ===================== 10. 管理员专用接口 =====================
-
-/**
- * 获取所有用户时间选择统计（管理员）
- * @param {string} date - 指定日期过滤（可选）
- * @returns {Promise}
- */
-export const fetchTimeSelectionStats = (date = '') => {
-  const url = date ? `/teacher/admin/time-selection-stats?date=${date}` : '/teacher/admin/time-selection-stats';
-  return request({
-    url: url,
-    method: 'GET'
-  });
-};
-
-/**
- * 生成评审任务分配（管理员）
- * @param {object} assignmentData - 分配数据
- * @returns {Promise}
- */
-export const generateAssignments = (assignmentData) => {
-  return request({
-    url: '/teacher/admin/generate-assignments',
-    method: 'POST',
-    data: assignmentData
-  });
-};
-
-/**
- * 发送系统通知（管理员）
- * @param {object} notificationData - 通知数据
- * @returns {Promise}
- */
-export const sendSystemNotification = (notificationData) => {
-  return request({
-    url: '/teacher/admin/notifications',
-    method: 'POST',
-    data: notificationData
   });
 };
 
