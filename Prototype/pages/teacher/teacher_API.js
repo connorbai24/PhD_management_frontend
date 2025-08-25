@@ -1,330 +1,427 @@
-import BASE_URL from '@/utils/apiConfig.js'
+// 假设 token 来自本地存储或全局状态
+const getToken = () => uni.getStorageSync('token') || '';
 
-// 通用请求方法
-const request = (url, options = {}) => {
+// 通用请求处理函数
+const request = (options) => {
   return new Promise((resolve, reject) => {
-    // 添加请求拦截，自动添加token
-    const token = uni.getStorageSync('token') || ''
-    
+    console.log(`发起API请求: ${options.method} ${options.url}`);
     uni.request({
-      url: `${BASE_URL}${url}`,
-      method: options.method || 'GET',
-      data: options.data || {},
+      ...options,
       header: {
+        'Authorization': `Bearer ${getToken()}`,
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : '',
         ...options.header
       },
       success: (res) => {
-        console.log(`API ${options.method || 'GET'} ${url}:`, res.data)
-        
+        console.log(`API请求成功 [${options.method} ${options.url}]:`, res);
         if (res.data.code === 200) {
-          resolve(res.data)
+          resolve(res.data);
         } else {
-          console.error('API Error:', res.data.message || '请求失败')
-          // 根据错误码进行不同处理
+          // 特殊处理401未授权
           if (res.data.code === 401) {
-            // token过期，跳转到登录页
-            uni.removeStorageSync('token')
-            uni.removeStorageSync('teacherInfo')
+            uni.removeStorageSync('token');
+            uni.removeStorageSync('teacherInfo');
             uni.reLaunch({
               url: '/pages/login/login'
-            })
+            });
           }
-          reject(new Error(res.data.message || '请求失败'))
+          reject(new Error(res.data.message || '请求失败'));
         }
       },
-      fail: (error) => {
-        console.error('Request failed:', error)
-        // 网络错误处理
-        if (error.errMsg && error.errMsg.includes('timeout')) {
-          reject(new Error('请求超时，请检查网络连接'))
-        } else {
-          reject(new Error('网络请求失败，请稍后重试'))
-        }
+      fail: (err) => {
+        console.error(`API请求失败 [${options.method} ${options.url}]:`, err);
+        reject(err);
       }
-    })
-  })
-}
+    });
+  });
+};
 
-// 教师信息相关API
-export const teacherAPI = {
-  // 获取教师基本信息
-  getProfile: () => {
-    return request('/api/v1/teacher/profile')
-  },
+// ===================== 1. 时间配置管理接口 =====================
 
-  // 更新教师基本信息
-  updateProfile: (data) => {
-    return request('/api/v1/teacher/profile', {
-      method: 'PUT',
-      data
-    })
-  }
-}
+/**
+ * 获取当前时间配置
+ * @returns {Promise}
+ */
+export const fetchTimeConfig = () => {
+  return request({
+    url: '/teacher/time-config',
+    method: 'GET'
+  });
+};
 
-// 研究方向管理API
-export const researchAPI = {
-  // 获取可选研究方向列表
-  getDirections: () => {
-    return request('/api/v1/research-directions')
-  },
+/**
+ * 更新全局评审设置（管理员）
+ * @param {object} settings - 全局设置
+ * @param {number} settings.slotDuration - 每场评审时长（分钟）
+ * @param {number} settings.breakTime - 场次间隔时间（分钟）
+ * @returns {Promise}
+ */
+export const updateGlobalSettings = (settings) => {
+  return request({
+    url: '/teacher/admin/global-settings',
+    method: 'PUT',
+    data: settings
+  });
+};
 
-  // 获取教师研究方向
-  getTeacherResearchAreas: () => {
-    return request('/api/v1/teacher/research-areas')
-  },
+/**
+ * 更新日期配置（管理员）
+ * @param {array} dateConfigs - 日期配置数组
+ * @returns {Promise}
+ */
+export const updateDateConfigs = (dateConfigs) => {
+  return request({
+    url: '/teacher/admin/date-configs',
+    method: 'PUT',
+    data: { dateConfigs }
+  });
+};
 
-  // 添加研究方向
-  addResearchArea: (name) => {
-    return request('/api/v1/teacher/research-areas', {
-      method: 'POST',
-      data: { name }
-    })
-  },
+/**
+ * 验证时间配置
+ * @param {object} config - 配置对象
+ * @returns {Promise}
+ */
+export const validateTimeConfig = (config) => {
+  return request({
+    url: '/teacher/admin/validate-config',
+    method: 'POST',
+    data: config
+  });
+};
 
-  // 删除研究方向
-  deleteResearchArea: (areaId) => {
-    return request(`/api/v1/teacher/research-areas/${areaId}`, {
-      method: 'DELETE'
-    })
-  },
+// ===================== 2. 用户时间选择接口 =====================
 
-  // 申请自定义研究方向
-  applyCustomDirection: (customDirection) => {
-    return request('/api/v1/teacher/custom-research-direction', {
-      method: 'POST',
-      data: { customDirection }
-    })
-  }
-}
+/**
+ * 获取用户时间选择
+ * @returns {Promise}
+ */
+export const fetchUserTimeSelection = () => {
+  return request({
+    url: '/teacher/user/time-selection',
+    method: 'GET'
+  });
+};
 
-// 专业方向确认API
-export const confirmationAPI = {
-  // 获取当前研究方向信息
-  getResearchConfirmation: () => {
-    return request('/api/v1/teacher/research-confirmation')
-  },
+/**
+ * 保存用户时间选择
+ * @param {array} selectedSlots - 选中的时间段ID数组
+ * @returns {Promise}
+ */
+export const saveTimeSelection = (selectedSlots) => {
+  return request({
+    url: '/teacher/user/time-selection',
+    method: 'POST',
+    data: { selectedSlots }
+  });
+};
 
-  // 保存研究方向确认
-  saveResearchConfirmation: (direction) => {
-    return request('/api/v1/teacher/research-confirmation', {
-      method: 'POST',
-      data: { direction }
-    })
-  }
-}
+/**
+ * 获取选择截止时间
+ * @returns {Promise}
+ */
+export const fetchDeadline = () => {
+  return request({
+    url: '/teacher/deadline',
+    method: 'GET'
+  });
+};
 
-// 时间选择相关API
-export const timeSelectionAPI = {
-  // 获取当前时间配置
-  getTimeConfig: () => {
-    return request('/api/v1/time-config')
-  },
+// ===================== 3. 评审任务管理接口 =====================
 
-  // 获取用户时间选择
-  getUserTimeSelection: () => {
-    return request('/api/v1/user/time-selection')
-  },
+/**
+ * 获取用户评审任务
+ * @returns {Promise}
+ */
+export const fetchReviewTasks = () => {
+  return request({
+    url: '/teacher/user/review-tasks',
+    method: 'GET'
+  });
+};
 
-  // 保存用户时间选择
-  saveTimeSelection: (selectedSlots) => {
-    return request('/api/v1/user/time-selection', {
-      method: 'POST',
-      data: { selectedSlots }
-    })
-  },
+/**
+ * 更新评审任务状态
+ * @param {number} taskId - 任务ID
+ * @param {string} status - 任务状态
+ * @param {string} notes - 备注信息（可选）
+ * @returns {Promise}
+ */
+export const updateTaskStatus = (taskId, status, notes = '') => {
+  return request({
+    url: `/teacher/user/review-tasks/${taskId}/status`,
+    method: 'PUT',
+    data: { status, notes }
+  });
+};
 
-  // 获取选择截止时间
-  getDeadline: () => {
-    return request('/api/v1/deadline')
-  }
-}
+// ===================== 4. 通知管理接口 =====================
 
-// 评审任务相关API
-export const reviewAPI = {
-  // 获取用户评审任务
-  getReviewTasks: () => {
-    return request('/api/v1/user/review-tasks')
-  },
+/**
+ * 获取用户通知
+ * @param {number} page - 页码（默认1）
+ * @param {number} limit - 每页数量（默认20）
+ * @param {boolean} unreadOnly - 仅未读通知（默认false）
+ * @returns {Promise}
+ */
+export const fetchNotifications = (page = 1, limit = 20, unreadOnly = false) => {
+  return request({
+    url: `/teacher/user/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`,
+    method: 'GET'
+  });
+};
 
-  // 更新评审任务状态
-  updateTaskStatus: (taskId, status, notes = '') => {
-    return request(`/api/v1/user/review-tasks/${taskId}/status`, {
-      method: 'PUT',
-      data: { status, notes }
-    })
-  }
-}
+/**
+ * 标记通知为已读
+ * @param {number} notificationId - 通知ID
+ * @returns {Promise}
+ */
+export const markNotificationAsRead = (notificationId) => {
+  return request({
+    url: `/teacher/user/notifications/${notificationId}/read`,
+    method: 'PUT'
+  });
+};
 
-// 通知相关API - 根据API文档完善
-export const notificationAPI = {
-  // 获取用户通知 - 支持分页和过滤
-  getNotifications: (params = {}) => {
-    const { page = 1, limit = 20, unreadOnly = false } = params
-    const queryStr = `page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`
-    return request(`/api/v1/user/notifications?${queryStr}`)
-  },
+/**
+ * 全部标记为已读
+ * @returns {Promise}
+ */
+export const markAllNotificationsAsRead = () => {
+  return request({
+    url: '/teacher/user/notifications/mark-all-read',
+    method: 'PUT'
+  });
+};
 
-  // 标记通知为已读
-  markAsRead: (notificationId) => {
-    return request(`/api/v1/user/notifications/${notificationId}/read`, {
-      method: 'PUT'
-    })
-  },
+/**
+ * 检查新通知
+ * @returns {Promise}
+ */
+export const checkNewNotifications = () => {
+  return request({
+    url: '/teacher/user/notifications/check',
+    method: 'GET'
+  });
+};
 
-  // 检查新通知
-  checkNewNotifications: () => {
-    return request('/api/v1/user/notifications/check')
-  },
+// ===================== 5. 教师信息管理接口 =====================
 
-  // 标记所有通知为已读 - 新增API
-  markAllAsRead: () => {
-    return request('/api/v1/user/notifications/read-all', {
-      method: 'PUT'
-    })
-  },
+/**
+ * 获取教师基本信息
+ * @returns {Promise}
+ */
+export const fetchTeacherProfile = () => {
+  return request({
+    url: '/teacher/profile',
+    method: 'GET'
+  });
+};
 
-  // 批量标记通知为已读 - 新增API（可选）
-  batchMarkAsRead: (notificationIds) => {
-    return request('/api/v1/user/notifications/batch-read', {
-      method: 'PUT',
-      data: { notificationIds }
-    })
-  },
+/**
+ * 更新教师基本信息
+ * @param {object} profileData - 教师信息
+ * @param {string} profileData.name - 教师姓名
+ * @returns {Promise}
+ */
+export const updateTeacherProfile = (profileData) => {
+  return request({
+    url: '/teacher/profile',
+    method: 'PUT',
+    data: profileData
+  });
+};
 
-  // 删除通知 - 新增API（可选）
-  deleteNotification: (notificationId) => {
-    return request(`/api/v1/user/notifications/${notificationId}`, {
-      method: 'DELETE'
-    })
-  },
+// ===================== 6. 研究方向管理接口 =====================
 
-  // 批量删除通知 - 新增API（可选）
-  batchDeleteNotifications: (notificationIds) => {
-    return request('/api/v1/user/notifications/batch-delete', {
-      method: 'DELETE',
-      data: { notificationIds }
-    })
-  }
-}
+/**
+ * 获取教师研究方向
+ * @returns {Promise}
+ */
+export const fetchTeacherResearchAreas = () => {
+  return request({
+    url: '/teacher/research-areas',
+    method: 'GET'
+  });
+};
 
-// 用户认证相关API
-export const authAPI = {
-  // 用户登录
-  login: (username, password, userType = 'teacher') => {
-    return request('/api/v1/auth/login', {
-      method: 'POST',
-      data: { username, password, userType }
-    })
-  },
+/**
+ * 添加研究方向
+ * @param {string} name - 研究方向名称
+ * @returns {Promise}
+ */
+export const addResearchArea = (name) => {
+  return request({
+    url: '/teacher/research-areas',
+    method: 'POST',
+    data: { name }
+  });
+};
 
-  // 用户登出
-  logout: () => {
-    return request('/api/v1/auth/logout', {
-      method: 'POST'
-    })
-  },
+/**
+ * 删除研究方向
+ * @param {number} areaId - 研究方向ID
+ * @returns {Promise}
+ */
+export const deleteResearchArea = (areaId) => {
+  return request({
+    url: `/teacher/research-areas/${areaId}`,
+    method: 'DELETE'
+  });
+};
 
-  // 刷新Token
-  refreshToken: (refreshToken) => {
-    return request('/api/v1/auth/refresh', {
-      method: 'POST',
-      data: { refreshToken }
-    })
-  },
+/**
+ * 获取可选研究方向列表
+ * @returns {Promise}
+ */
+export const fetchResearchDirections = () => {
+  return request({
+    url: '/teacher/research-directions',
+    method: 'GET'
+  });
+};
 
-  // 修改密码
-  changePassword: (currentPassword, newPassword, confirmPassword) => {
-    return request('/api/v1/user/password', {
-      method: 'PUT',
-      data: { currentPassword, newPassword, confirmPassword }
-    })
-  },
+// ===================== 7. 专业方向确认接口 =====================
 
-  // 获取当前用户信息
-  getCurrentUser: () => {
-    return request('/api/v1/user/info')
-  }
-}
+/**
+ * 获取当前研究方向信息
+ * @returns {Promise}
+ */
+export const fetchResearchConfirmation = () => {
+  return request({
+    url: '/teacher/research-confirmation',
+    method: 'GET'
+  });
+};
 
-// 工具函数：处理API响应
-export const apiUtils = {
-  // 处理错误
-  handleError: (error, defaultMessage = '操作失败') => {
-    console.error('API Error:', error)
-    const message = error.message || defaultMessage
-    uni.showToast({
-      title: message,
-      icon: 'none',
-      duration: 2000
-    })
-    return message
-  },
+/**
+ * 保存研究方向确认
+ * @param {string} direction - 确认的研究方向
+ * @returns {Promise}
+ */
+export const saveResearchConfirmation = (direction) => {
+  return request({
+    url: '/teacher/research-confirmation',
+    method: 'POST',
+    data: { direction }
+  });
+};
 
-  // 显示成功消息
-  showSuccess: (message = '操作成功') => {
-    uni.showToast({
-      title: message,
-      icon: 'success',
-      duration: 1500
-    })
-  },
+/**
+ * 申请自定义研究方向
+ * @param {string} customDirection - 自定义研究方向名称
+ * @returns {Promise}
+ */
+export const applyCustomResearchDirection = (customDirection) => {
+  return request({
+    url: '/teacher/custom-research-direction',
+    method: 'POST',
+    data: { customDirection }
+  });
+};
 
-  // 显示加载状态
-  showLoading: (title = '加载中...') => {
-    uni.showLoading({
-      title,
-      mask: true
-    })
-  },
+// ===================== 8. 密码管理接口 =====================
 
-  // 隐藏加载状态
-  hideLoading: () => {
-    uni.hideLoading()
-  },
+/**
+ * 修改密码
+ * @param {object} passwordData - 密码数据
+ * @param {string} passwordData.currentPassword - 当前密码
+ * @param {string} passwordData.newPassword - 新密码
+ * @param {string} passwordData.confirmPassword - 确认新密码
+ * @returns {Promise}
+ */
+export const updatePassword = (passwordData) => {
+  return request({
+    url: '/teacher/user/password',
+    method: 'PUT',
+    data: passwordData
+  });
+};
 
-  // 确认对话框
-  showConfirm: (content, title = '提示') => {
-    return new Promise((resolve) => {
-      uni.showModal({
-        title,
-        content,
-        success: (res) => {
-          resolve(res.confirm)
-        }
-      })
-    })
-  },
+// ===================== 9. 用户认证接口 =====================
 
-  // 格式化错误信息
-  formatError: (error) => {
-    if (typeof error === 'string') return error
-    if (error && error.message) return error.message
-    if (error && error.data && error.data.message) return error.data.message
-    return '操作失败'
-  },
+/**
+ * 用户登录
+ * @param {string} username - 用户名
+ * @param {string} password - 密码
+ * @param {string} userType - 用户类型（默认teacher）
+ * @returns {Promise}
+ */
+export const loginUser = (username, password, userType = 'teacher') => {
+  return request({
+    url: '/auth/login',
+    method: 'POST',
+    data: { username, password, userType }
+  });
+};
 
-  // 处理API响应
-  handleResponse: (response, successCallback, errorCallback) => {
-    if (response.code === 200) {
-      if (typeof successCallback === 'function') {
-        successCallback(response.data)
-      }
-      return response.data
-    } else {
-      const errorMessage = response.message || '请求失败'
-      if (typeof errorCallback === 'function') {
-        errorCallback(errorMessage)
-      } else {
-        apiUtils.handleError(new Error(errorMessage))
-      }
-      throw new Error(errorMessage)
-    }
-  }
-}
+/**
+ * 用户登出
+ * @returns {Promise}
+ */
+export const logoutUser = () => {
+  return request({
+    url: '/auth/logout',
+    method: 'POST'
+  });
+};
 
-// WebSocket管理 - 增强功能
+/**
+ * 刷新Token
+ * @param {string} refreshToken - 刷新令牌
+ * @returns {Promise}
+ */
+export const refreshToken = (refreshToken) => {
+  return request({
+    url: '/auth/refresh',
+    method: 'POST',
+    data: { refreshToken }
+  });
+};
+
+// ===================== 10. 管理员专用接口 =====================
+
+/**
+ * 获取所有用户时间选择统计（管理员）
+ * @param {string} date - 指定日期过滤（可选）
+ * @returns {Promise}
+ */
+export const fetchTimeSelectionStats = (date = '') => {
+  const url = date ? `/teacher/admin/time-selection-stats?date=${date}` : '/teacher/admin/time-selection-stats';
+  return request({
+    url: url,
+    method: 'GET'
+  });
+};
+
+/**
+ * 生成评审任务分配（管理员）
+ * @param {object} assignmentData - 分配数据
+ * @returns {Promise}
+ */
+export const generateAssignments = (assignmentData) => {
+  return request({
+    url: '/teacher/admin/generate-assignments',
+    method: 'POST',
+    data: assignmentData
+  });
+};
+
+/**
+ * 发送系统通知（管理员）
+ * @param {object} notificationData - 通知数据
+ * @returns {Promise}
+ */
+export const sendSystemNotification = (notificationData) => {
+  return request({
+    url: '/teacher/admin/notifications',
+    method: 'POST',
+    data: notificationData
+  });
+};
+
+// ===================== WebSocket 管理 =====================
+
 export const wsManager = {
   ws: null,
   isConnected: false,
@@ -333,263 +430,244 @@ export const wsManager = {
   reconnectInterval: 3000,
   heartbeatInterval: null,
   heartbeatTimeout: 30000,
-  messageHandlers: new Map(), // 消息处理器
+  messageHandlers: new Map(),
 
-  // 连接WebSocket
-  connect: (token) => {
-    const wsToken = token || uni.getStorageSync('token')
+  /**
+   * 连接WebSocket
+   * @param {string} token - 认证令牌
+   */
+  connect: function(token) {
+    const wsToken = token || getToken();
     if (!wsToken) {
-      console.warn('No token found, cannot connect to WebSocket')
-      return
+      console.warn('No token found, cannot connect to WebSocket');
+      return;
     }
 
     try {
-      wsManager.ws = uni.connectSocket({
-        url: `wss://api.review-system.com/ws?token=${wsToken}`,
+      this.ws = uni.connectSocket({
+        url: `ws://localhost:8080/ws?token=${wsToken}`,
         header: {
           'Authorization': `Bearer ${wsToken}`
         }
-      })
+      });
 
-      wsManager.ws.onOpen(() => {
-        console.log('WebSocket连接成功')
-        wsManager.isConnected = true
-        wsManager.reconnectAttempts = 0
-        wsManager.startHeartbeat()
-        
-        // 触发连接成功事件
-        wsManager.emit('connected')
-      })
+      this.ws.onOpen(() => {
+        console.log('WebSocket连接成功');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
+        this.startHeartbeat();
+        this.emit('connected');
+      });
 
-      wsManager.ws.onMessage((res) => {
+      this.ws.onMessage((res) => {
         try {
-          const data = JSON.parse(res.data)
-          wsManager.handleMessage(data)
+          const data = JSON.parse(res.data);
+          this.handleMessage(data);
         } catch (error) {
-          console.error('WebSocket消息解析失败:', error)
+          console.error('WebSocket消息解析失败:', error);
         }
-      })
+      });
 
-      wsManager.ws.onClose((res) => {
-        console.log('WebSocket连接关闭', res)
-        wsManager.isConnected = false
-        wsManager.stopHeartbeat()
+      this.ws.onClose((res) => {
+        console.log('WebSocket连接关闭', res);
+        this.isConnected = false;
+        this.stopHeartbeat();
+        this.emit('disconnected');
         
-        // 触发断开连接事件
-        wsManager.emit('disconnected')
-        
-        // 如果不是主动关闭，尝试重连
-        if (res.code !== 1000) {
-          wsManager.reconnect()
+        // 非主动关闭时尝试重连
+        if (res.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnect();
         }
-      })
+      });
 
-      wsManager.ws.onError((error) => {
-        console.error('WebSocket连接错误:', error)
-        wsManager.isConnected = false
-        wsManager.stopHeartbeat()
-        
-        // 触发错误事件
-        wsManager.emit('error', error)
-      })
+      this.ws.onError((error) => {
+        console.error('WebSocket连接错误:', error);
+        this.isConnected = false;
+        this.stopHeartbeat();
+        this.emit('error', error);
+      });
 
     } catch (error) {
-      console.error('WebSocket连接失败:', error)
+      console.error('WebSocket连接失败:', error);
     }
   },
 
-  // 重连WebSocket
-  reconnect: () => {
-    if (wsManager.reconnectAttempts >= wsManager.maxReconnectAttempts) {
-      console.log('WebSocket重连次数已达上限')
-      wsManager.emit('reconnectFailed')
-      return
-    }
-
-    wsManager.reconnectAttempts++
-    console.log(`WebSocket重连第${wsManager.reconnectAttempts}次...`)
+  /**
+   * 重连WebSocket
+   */
+  reconnect: function() {
+    this.reconnectAttempts++;
+    console.log(`WebSocket重连第${this.reconnectAttempts}次...`);
     
     setTimeout(() => {
-      wsManager.connect()
-    }, wsManager.reconnectInterval * wsManager.reconnectAttempts) // 递增重连间隔
+      this.connect();
+    }, this.reconnectInterval * this.reconnectAttempts);
   },
 
-  // 开始心跳检测
-  startHeartbeat: () => {
-    if (wsManager.heartbeatInterval) return
+  /**
+   * 开始心跳检测
+   */
+  startHeartbeat: function() {
+    if (this.heartbeatInterval) return;
     
-    wsManager.heartbeatInterval = setInterval(() => {
-      if (wsManager.isConnected) {
-        wsManager.send({
+    this.heartbeatInterval = setInterval(() => {
+      if (this.isConnected) {
+        this.send({
           type: 'ping',
           timestamp: Date.now()
-        })
+        });
       }
-    }, wsManager.heartbeatTimeout)
+    }, this.heartbeatTimeout);
   },
 
-  // 停止心跳检测
-  stopHeartbeat: () => {
-    if (wsManager.heartbeatInterval) {
-      clearInterval(wsManager.heartbeatInterval)
-      wsManager.heartbeatInterval = null
+  /**
+   * 停止心跳检测
+   */
+  stopHeartbeat: function() {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
     }
   },
 
-  // 处理WebSocket消息
-  handleMessage: (data) => {
-    console.log('收到WebSocket消息:', data)
+  /**
+   * 处理WebSocket消息
+   * @param {object} data - 消息数据
+   */
+  handleMessage: function(data) {
+    console.log('收到WebSocket消息:', data);
     
     // 处理心跳响应
     if (data.type === 'pong') {
-      return
+      return;
     }
     
     // 触发对应的消息处理器
-    wsManager.emit(data.type, data.data)
+    this.emit(data.type, data.data);
     
+    // 处理不同类型的消息
     switch (data.type) {
       case 'notification':
-        // 显示新通知
         uni.showToast({
           title: data.data.title,
           icon: 'none',
           duration: 3000
-        })
-        // 触发通知更新事件
-        uni.$emit('newNotification', data.data)
-        break
+        });
+        uni.$emit('newNotification', data.data);
+        break;
         
       case 'config_update':
-        // 时间配置更新
-        uni.showModal({
-          title: '时间配置更新',
-          content: '管理员已更新评审时间配置，请重新确认您的可用时间',
-          showCancel: false,
-          success: () => {
-            // 刷新当前页面
-            const pages = getCurrentPages()
-            const currentPage = pages[pages.length - 1]
-            if (currentPage.route.includes('schedule')) {
-              // 重新加载时间配置
-              uni.$emit('configUpdate', data.data)
-            }
-          }
-        })
-        break
+        uni.$emit('configUpdate', data.data);
+        break;
         
       case 'research_area_approved':
       case 'research_area_rejected':
-        // 研究方向审核结果
-        const status = data.data.status === 'approved' ? '通过' : '拒绝'
+        const status = data.data.status === 'approved' ? '通过' : '拒绝';
         uni.showToast({
           title: `研究方向"${data.data.name}"审核${status}`,
           icon: data.data.status === 'approved' ? 'success' : 'none',
           duration: 3000
-        })
-        uni.$emit('researchAreaUpdate', data.data)
-        break
+        });
+        uni.$emit('researchAreaUpdate', data.data);
+        break;
         
       case 'task_assigned':
-        // 新评审任务分配
         uni.showToast({
           title: '您有新的评审任务',
           icon: 'none',
           duration: 3000
-        })
-        uni.$emit('taskAssigned', data.data)
-        break
-        
-      case 'deadline_reminder':
-        // 截止时间提醒
-        uni.showModal({
-          title: '截止时间提醒',
-          content: data.data.message || '请及时完成相关操作',
-          showCancel: false
-        })
-        break
+        });
+        uni.$emit('taskAssigned', data.data);
+        break;
         
       default:
-        console.log('未知的WebSocket消息类型:', data.type)
+        console.log('未知的WebSocket消息类型:', data.type);
     }
   },
 
-  // 事件发射器
-  emit: (event, data) => {
-    const handlers = wsManager.messageHandlers.get(event)
+  /**
+   * 触发事件
+   * @param {string} event - 事件名称
+   * @param {any} data - 事件数据
+   */
+  emit: function(event, data) {
+    const handlers = this.messageHandlers.get(event);
     if (handlers) {
       handlers.forEach(handler => {
         try {
-          handler(data)
+          handler(data);
         } catch (error) {
-          console.error('WebSocket事件处理器执行错误:', error)
+          console.error('WebSocket事件处理器执行错误:', error);
         }
-      })
+      });
     }
   },
 
-  // 添加事件监听器
-  on: (event, handler) => {
-    if (!wsManager.messageHandlers.has(event)) {
-      wsManager.messageHandlers.set(event, [])
+  /**
+   * 添加事件监听器
+   * @param {string} event - 事件名称
+   * @param {function} handler - 处理函数
+   */
+  on: function(event, handler) {
+    if (!this.messageHandlers.has(event)) {
+      this.messageHandlers.set(event, []);
     }
-    wsManager.messageHandlers.get(event).push(handler)
+    this.messageHandlers.get(event).push(handler);
   },
 
-  // 移除事件监听器
-  off: (event, handler) => {
-    const handlers = wsManager.messageHandlers.get(event)
+  /**
+   * 移除事件监听器
+   * @param {string} event - 事件名称
+   * @param {function} handler - 处理函数
+   */
+  off: function(event, handler) {
+    const handlers = this.messageHandlers.get(event);
     if (handlers) {
-      const index = handlers.indexOf(handler)
+      const index = handlers.indexOf(handler);
       if (index > -1) {
-        handlers.splice(index, 1)
+        handlers.splice(index, 1);
       }
     }
   },
 
-  // 断开WebSocket连接
-  disconnect: () => {
-    if (wsManager.ws && wsManager.isConnected) {
-      wsManager.ws.close({
+  /**
+   * 断开WebSocket连接
+   */
+  disconnect: function() {
+    if (this.ws && this.isConnected) {
+      this.ws.close({
         code: 1000,
         reason: 'Normal closure'
-      })
-      wsManager.ws = null
-      wsManager.isConnected = false
-      wsManager.stopHeartbeat()
+      });
+      this.ws = null;
+      this.isConnected = false;
+      this.stopHeartbeat();
     }
   },
 
-  // 发送消息
-  send: (data) => {
-    if (wsManager.ws && wsManager.isConnected) {
-      wsManager.ws.send({
+  /**
+   * 发送消息
+   * @param {object} data - 消息数据
+   */
+  send: function(data) {
+    if (this.ws && this.isConnected) {
+      this.ws.send({
         data: JSON.stringify(data)
-      })
+      });
     } else {
-      console.warn('WebSocket未连接，无法发送消息')
+      console.warn('WebSocket未连接，无法发送消息');
     }
   },
 
-  // 获取连接状态
-  getConnectionState: () => {
+  /**
+   * 获取连接状态
+   * @returns {object} 连接状态信息
+   */
+  getConnectionState: function() {
     return {
-      isConnected: wsManager.isConnected,
-      reconnectAttempts: wsManager.reconnectAttempts,
-      maxReconnectAttempts: wsManager.maxReconnectAttempts
-    }
+      isConnected: this.isConnected,
+      reconnectAttempts: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts
+    };
   }
-}
-
-// 默认导出所有API
-export default {
-  teacherAPI,
-  researchAPI,
-  confirmationAPI,
-  timeSelectionAPI,
-  reviewAPI,
-  notificationAPI,
-  authAPI,
-  apiUtils,
-  wsManager
-}
+};
