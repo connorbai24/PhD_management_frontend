@@ -58,8 +58,7 @@ Content-Type: application/json
   "message": "success",
   "data": {
     "globalSettings": {
-      "slotDuration": 45,
-      "breakTime": 15
+      "slotDuration": 45
     },
     "dateConfigs": [
       {
@@ -82,199 +81,16 @@ Content-Type: application/json
         "morning": {
           "startTime": "09:00",
           "endTime": "12:00",
-          "slotDuration": 45,
-          "breakTime": 15
+          "slotDuration": 45
         },
         "afternoon": {
           "startTime": "14:00",
           "endTime": "17:00",
-          "slotDuration": 45,
-          "breakTime": 15
+          "slotDuration": 45
         }
       }
     },
     "totalSlots": 8
-  },
-  "timestamp": "2025-08-21T13:00:00Z"
-}
-```
-
-### 2.2 更新全局评审设置（管理员）
-
-**接口地址**: `PUT /teacher/admin/global-settings`
-
-**权限要求**: 管理员权限
-
-**请求参数**:
-
-```json
-{
-  "slotDuration": 45,
-  "breakTime": 15
-}
-```
-
-**参数说明**:
-
-| 参数         | 类型   | 必填 | 说明                        |
-| ------------ | ------ | ---- | --------------------------- |
-| slotDuration | number | 是   | 每场评审时长（分钟），1-180 |
-| breakTime    | number | 是   | 场次间隔时间（分钟），0-60  |
-
-**响应示例**:
-
-```json
-{
-  "code": 200,
-  "message": "全局设置更新成功",
-  "data": {
-    "slotDuration": 45,
-    "breakTime": 15,
-    "validation": {
-      "isValid": true,
-      "errors": []
-    }
-  },
-  "timestamp": "2025-08-21T13:00:00Z"
-}
-```
-
-### 2.3 更新日期配置（管理员）
-
-**接口地址**: `PUT /teacher/admin/date-configs`
-
-**权限要求**: 管理员权限
-
-**请求参数**:
-
-```json
-{
-  "dateConfigs": [
-    {
-      "date": "2025-06-26",
-      "displayDate": "2025/06/26周四",
-      "morning": {
-        "startTime": "09:00",
-        "endTime": "12:00"
-      },
-      "afternoon": {
-        "startTime": "14:00",
-        "endTime": "17:00"
-      }
-    }
-  ]
-}
-```
-
-**参数说明**:
-
-- ```
-  dateConfigs
-  ```
-
-  : 日期配置数组
-
-  - `date`: 日期（YYYY-MM-DD格式）
-
-  - `displayDate`: 显示用日期字符串
-
-  - ```
-    morning
-    ```
-
-    : 上午时间段配置，可选
-
-    - `startTime`: 开始时间（HH:MM格式）
-    - `endTime`: 结束时间（HH:MM格式）
-
-  - `afternoon`: 下午时间段配置，可选
-
-**响应示例**:
-
-```json
-{
-  "code": 200,
-  "message": "日期配置更新成功",
-  "data": {
-    "updatedConfig": {
-      "day1": {
-        "date": "2025-06-26",
-        "displayDate": "2025/06/26周四",
-        "morning": {
-          "startTime": "09:00",
-          "endTime": "12:00",
-          "slotDuration": 45,
-          "breakTime": 15
-        }
-      }
-    },
-    "totalSlots": 4,
-    "validation": {
-      "isValid": true,
-      "errors": []
-    }
-  },
-  "timestamp": "2025-08-21T13:00:00Z"
-}
-```
-
-### 2.4 验证时间配置
-
-**接口地址**: `POST /teacher/admin/validate-config`
-
-**权限要求**: 管理员权限
-
-**请求参数**:
-
-```json
-{
-  "globalSettings": {
-    "slotDuration": 45,
-    "breakTime": 15
-  },
-  "dateConfigs": [
-    {
-      "date": "2025-06-26",
-      "displayDate": "2025/06/26周四",
-      "morning": {
-        "startTime": "09:00",
-        "endTime": "12:00"
-      }
-    }
-  ]
-}
-```
-
-**响应示例**:
-
-```json
-{
-  "code": 200,
-  "message": "配置验证完成",
-  "data": {
-    "validation": {
-      "isValid": true,
-      "errors": []
-    },
-    "totalSlots": 4,
-    "generatedTimeSlots": {
-      "day1": {
-        "morning": [
-          {
-            "id": 1,
-            "time": "09:00-09:45",
-            "startTime": "09:00",
-            "endTime": "09:45"
-          },
-          {
-            "id": 2,
-            "time": "10:00-10:45",
-            "startTime": "10:00",
-            "endTime": "10:45"
-          }
-        ]
-      }
-    }
   },
   "timestamp": "2025-08-21T13:00:00Z"
 }
@@ -432,8 +248,7 @@ Content-Type: application/json
 
 ```json
 {
-  "status": "completed",
-  "notes": "评审完成，学生表现良好"
+  "status": "completed"
 }
 ```
 
@@ -453,7 +268,6 @@ Content-Type: application/json
   "data": {
     "taskId": 1,
     "status": "completed",
-    "notes": "评审完成，学生表现良好",
     "updatedAt": "2025-06-20T10:30:00Z"
   },
   "timestamp": "2025-08-21T13:00:00Z"
@@ -484,44 +298,32 @@ Content-Type: application/json
     "notifications": [
       {
         "id": 1,
-        "type": "schedule",
         "title": "评审安排变更",
         "description": "您明日上午的评审时间调整为",
-        "highlightInfo": "10:00-10:45",
-        "extraInfo": "学生：李明 | 地点：科研楼A座301",
         "time": "2小时前",
         "isRead": false,
         "createdAt": "2025-06-20T10:30:00Z"
       },
       {
         "id": 2,
-        "type": "system",
         "title": "系统维护通知",
         "description": "系统将于今晚进行维护，期间可能无法正常使用",
-        "highlightInfo": "22:00-23:00",
-        "extraInfo": null,
         "time": "5小时前",
         "isRead": false,
         "createdAt": "2025-06-20T05:30:00Z"
       },
       {
         "id": 3,
-        "type": "reminder",
         "title": "评审提醒",
-        "description": "距离下次评审还有",
-        "highlightInfo": "1小时",
-        "extraInfo": "学生：张小雨 | 时间：11:15-12:00",
+        "description": "距离下次评审还有1小时",
         "time": "1天前",
         "isRead": true,
         "createdAt": "2025-06-19T10:30:00Z"
       },
       {
         "id": 4,
-        "type": "announcement",
         "title": "重要公告",
         "description": "评审委员会关于论文评审标准的最新调整说明",
-        "highlightInfo": null,
-        "extraInfo": "请及时查看最新评审要求",
         "time": "2天前",
         "isRead": true,
         "createdAt": "2025-06-18T10:30:00Z"
@@ -532,8 +334,7 @@ Content-Type: application/json
       "limit": 20,
       "total": 5,
       "totalPages": 1
-    },
-    "unreadCount": 2
+    }
   },
   "timestamp": "2025-08-21T13:00:00Z"
 }
@@ -602,7 +403,6 @@ Content-Type: application/json
     "unreadCount": 3,
     "latestNotification": {
       "id": 1,
-      "type": "schedule_update",
       "title": "评审时间安排更新",
       "createdAt": "2025-06-20T10:30:00Z"
     }
@@ -637,38 +437,6 @@ Content-Type: application/json
       }
     ],
     "lastLoginAt": "2025-06-20T09:00:00Z"
-  },
-  "timestamp": "2025-08-21T13:00:00Z"
-}
-```
-
-### 6.2 更新教师基本信息
-
-**接口地址**: `PUT /teacher/profile`
-
-**请求参数**:
-
-```json
-{
-  "name": "王伟"
-}
-```
-
-**参数说明**:
-
-| 参数 | 类型   | 必填 | 说明     |
-| ---- | ------ | ---- | -------- |
-| name | string | 否   | 教师姓名 |
-
-**响应示例**:
-
-```json
-{
-  "code": 200,
-  "message": "个人信息更新成功",
-  "data": {
-    "name": "王伟",
-    "updatedAt": "2025-06-20T10:30:00Z"
   },
   "timestamp": "2025-08-21T13:00:00Z"
 }
