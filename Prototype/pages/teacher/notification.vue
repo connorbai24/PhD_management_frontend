@@ -10,55 +10,102 @@
         <text v-if="unreadCount > 0" class="mark-read-btn" @click="markAllAsRead">全部已读</text>
       </view>
     </view>
+	
+	<scroll-view 
+	      class="notification-list" 
+	      scroll-y="true" 
+	      @scrolltolower="loadMore"
+	      refresher-enabled="true"
+	      :refresher-triggered="refreshing"
+	      @refresherrefresh="onRefresh"
+	    >
+	      <view v-for="(notification, index) in notificationData" :key="notification.id" class="notification-item" 
+	            :class="{ 'unread': !notification.isRead }" @click="handleNotificationClick(notification, index)">
+	        <view class="notification-icon">
+	          <text class="icon-text">{{ getNotificationIcon(notification.type) }}</text>
+	          <view v-if="!notification.isRead" class="unread-dot"></view>
+	        </view>
+	
+	        <view class="notification-content">
+	          <view class="notification-header">
+	            <text class="notification-title">{{ notification.title }}</text>
+	            <text class="notification-time">{{ formatTime(notification.createdAt) }}</text>
+	          </view>
+	          
+	          <view class="notification-desc-container">
+	            <text class="notification-desc">{{ notification.description || notification.content }}</text>
+	            <text v-if="notification.highlightInfo" class="highlight-info">{{ notification.highlightInfo }}</text>
+	          </view>
+	          
+	          <view v-if="notification.extraInfo" class="notification-extra">
+	            <text class="extra-text">{{ notification.extraInfo }}</text>
+	          </view>
+	        </view>
+	      </view>
+	
+	      <view v-if="loading" class="loading-indicator">
+	        <text class="loading-text">加载中...</text>
+	      </view>
+	
+	      <view v-if="!hasMore && notificationData.length > 0" class="no-more">
+	        <text class="no-more-text">没有更多通知了</text>
+	      </view>
+	
+	      <view v-if="notificationData.length === 0 && !loading" class="empty-state">
+	        <text class="empty-icon">🔔</text>
+	        <text class="empty-title">暂无通知消息</text>
+	        <text class="empty-subtitle">最新的系统通知将在这里显示</text>
+	      </view>
+	    </scroll-view>
 
     <!-- 通知列表 -->
-    <scroll-view class="notification-list" scroll-y="true" @scrolltolower="loadMore">
+    <!-- <scroll-view class="notification-list" scroll-y="true" @scrolltolower="loadMore">
       <view v-for="(notification, index) in notificationData" :key="notification.id" class="notification-item" 
-            :class="{ 'unread': !notification.isRead }" @click="handleNotificationClick(notification, index)">
+            :class="{ 'unread': !notification.isRead }" @click="handleNotificationClick(notification, index)"> -->
         <!-- 通知图标 -->
-        <view class="notification-icon">
+<!--        <view class="notification-icon">
           <text class="icon-text">{{ getNotificationIcon(notification.type) }}</text>
           <view v-if="!notification.isRead" class="unread-dot"></view>
-        </view>
+        </view> -->
 
         <!-- 通知内容 -->
-        <view class="notification-content">
+<!--        <view class="notification-content">
           <view class="notification-header">
             <text class="notification-title">{{ notification.title }}</text>
             <text class="notification-time">{{ formatTime(notification.createdAt) }}</text>
-          </view>
+          </view> -->
           
           <!-- 主要描述内容 -->
-          <view class="notification-desc-container">
+<!--          <view class="notification-desc-container">
             <text class="notification-desc">{{ notification.description || notification.content }}</text>
             <!-- 突出显示的重点信息 -->
-            <text v-if="notification.highlightInfo" class="highlight-info">{{ notification.highlightInfo }}</text>
-          </view>
+<!--            <text v-if="notification.highlightInfo" class="highlight-info">{{ notification.highlightInfo }}</text>
+          </view> --> -->
           
           <!-- 附加信息 -->
-          <view v-if="notification.extraInfo" class="notification-extra">
+<!--          <view v-if="notification.extraInfo" class="notification-extra">
             <text class="extra-text">{{ notification.extraInfo }}</text>
           </view>
         </view>
-      </view>
+      </view> -->
 
       <!-- 加载更多指示器 -->
-      <view v-if="loading" class="loading-indicator">
+<!--      <view v-if="loading" class="loading-indicator">
         <text class="loading-text">加载中...</text>
-      </view>
+      </view> -->
 
       <!-- 没有更多数据提示 -->
-      <view v-if="!hasMore && notificationData.length > 0" class="no-more">
+<!--      <view v-if="!hasMore && notificationData.length > 0" class="no-more">
         <text class="no-more-text">没有更多通知了</text>
-      </view>
+      </view> -->
 
       <!-- 空状态 -->
-      <view v-if="notificationData.length === 0 && !loading" class="empty-state">
+<!--      <view v-if="notificationData.length === 0 && !loading" class="empty-state">
         <text class="empty-icon">🔔</text>
         <text class="empty-title">暂无通知消息</text>
         <text class="empty-subtitle">最新的系统通知将在这里显示</text>
       </view>
-    </scroll-view>
+    </scroll-view> -->
 
     <!-- 下拉刷新提示 -->
     <view v-if="refreshing" class="refresh-indicator">
@@ -76,7 +123,7 @@ const notificationData = ref([])
 const loading = ref(false)
 const refreshing = ref(false)
 const currentPage = ref(1)
-const pageSize = ref(20)
+const pageSize = ref(10)
 const hasMore = ref(true)
 const totalCount = ref(0)
 
@@ -101,11 +148,13 @@ onUnmounted(() => {
 
 // 加载通知列表
 const loadNotifications = async (reset = true) => {
+	// 【防抖】如果正在加载中（比如网慢），用户又划到底部了，直接返回，不发请求
   if (loading.value) return
   
   try {
     loading.value = true
-    
+	
+    // 如果是“重置”（如下拉刷新），把所有状态归零
     if (reset) {
       currentPage.value = 1
       notificationData.value = []
@@ -118,36 +167,45 @@ const loadNotifications = async (reset = true) => {
       unreadOnly: false
     } */
     
+	// 发起 HTTP 请求（异步）
+	// 等待你的后端接口返回结果
     const response = await notificationAPI.getNotifications(
-		currentPage.value, 
-		pageSize.value, 
-		false
+		currentPage.value,
+		pageSize.value
 	)
     
     if (response.code === 200) {
-      const { notifications, pagination, unreadCount: serverUnreadCount } = response.data
-      
-      if (reset) {
-        notificationData.value = notifications
-      } else {
-        notificationData.value.push(...notifications)
-      }
-      
-      totalCount.value = pagination.total
-      hasMore.value = currentPage.value < pagination.totalPages
-      
-      console.log(`加载通知成功，当前页：${currentPage.value}，总页数：${pagination.totalPages}`)
-    }
+          // 【修复重点 1】获取数据对象
+          const result = response.data || {}
     
-  } catch (error) {
-    console.error('加载通知失败:', error)
-    //apiUtils.handleError(error, '加载通知失败')
-	console.error('加载通知失败:', error)
-	uni.showToast({ title: '加载通知失败', icon: 'none' })
-  } finally {
-    loading.value = false
-    refreshing.value = false
-  }
+          // 【修复重点 2】兼容列表字段名 (MyBatis-Plus默认叫 records, 自定义可能叫 list)
+          // 如果后端改了返回结构，这里要自适应
+          const list = result.list || []
+          
+          // 【修复重点 3】处理数据赋值，防止 undefined
+          if (reset) {
+            notificationData.value = list
+          } else {
+            notificationData.value.push(...list)
+          }
+          
+          // 【修复重点 4】直接读取 total，不再通过 pagination 对象
+          const total = result.total || 0
+          const pages = result.pages || Math.ceil(total / pageSize.value) || 0
+    
+		totalCount.value = total
+		hasMore.value = currentPage.value < pages
+       
+       console.log(`加载成功: 当前页${currentPage.value}, 总数${total}, 数据量${list.length}`)
+     }
+     
+   } catch (error) {
+     console.error('加载通知失败:', error)
+     uni.showToast({ title: '加载失败', icon: 'none' })
+   } finally {
+     loading.value = false
+     refreshing.value = false
+   }
 }
 
 // 加载更多通知
@@ -327,10 +385,7 @@ defineExpose({
 </script>
 
 <style scoped>
-.notification-container {
-  min-height: 100vh;
-  background: linear-gradient(180deg, #f2f2f7 0%, #f2f2f7 100%);
-}
+
 
 /* 顶部导航栏 */
 .nav-bar {
@@ -345,6 +400,7 @@ defineExpose({
   top: 0;
   z-index: 100;
   border-bottom: 1rpx solid rgba(0, 0, 0, 0.05);
+  flex-shrink: 0
 }
 
 .nav-left {
@@ -384,14 +440,17 @@ defineExpose({
 
 /* 通知列表 */
 .notification-list {
-  flex: 1;
-  height: 0; /* Important for flex items to scroll */
-  padding: 24rpx 32rpx;
+  flex: 1;     /* 自动撑满剩余高度 */
+  height: 0;   /* 关键！配合 flex:1 使用，强制限制高度 */
+  width: 100%;
+  /* padding 不要写在这里，容易影响滚动条位置，写在里面的 view 或者 item 上 */
 }
 .notification-container {
-  height: 100vh; /* Ensure container is full height */
+  height: 100vh; /* 必须是固定高度 */
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* 禁止页面级滚动 */
+  background: linear-gradient(180deg, #f2f2f7 0%, #f2f2f7 100%);
 }
 .notification-item {
   background: rgba(255, 255, 255, 0.95);

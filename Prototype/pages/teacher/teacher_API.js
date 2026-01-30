@@ -140,9 +140,9 @@ export const updateTaskStatus = (taskId, status, notes = '') => {
  * @param {boolean} unreadOnly - 仅未读通知（默认false）
  * @returns {Promise}
  */
-export const fetchNotifications = (page = 1, limit = 20, unreadOnly = false) => {
+export const fetchNotifications = (page = 1, limit = 5) => {
   return request({
-    url: `/user/notifications?page=${page}&limit=${limit}&unreadOnly=${unreadOnly}`,
+    url: `/teacher/user/notifications?page=${page}&limit=${limit}`,
     method: 'GET'
   });
 };

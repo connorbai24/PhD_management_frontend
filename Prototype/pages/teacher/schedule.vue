@@ -542,29 +542,32 @@ const initializePage = async () => {
   
   console.log('评审日程页面初始化完成')
 }
-
 onMounted(async () => {
+  // 1. 【保留】初始化页面数据（进页面必须要查一次）
   await initializePage()
   
-  // 设置定时器
+  // 2. 【保留】更新当前时间的定时器
+  // 这个只在本地跑，不请求服务器，完全无害，用于页面显示 "2026-01-30 20:30"
   timer = setInterval(() => {
     currentTime.value = new Date()
   }, 60000)
   
-  // 定时检查新通知
-  notificationTimer = setInterval(checkNewNotifications, 30000)
+  // 3. 【已删除】notificationTimer 相关代码
+  // 既然用了 WebSocket，就不需要每隔一分钟去骚扰服务器了
 })
 
+// 4. 【合并优化】页面卸载时的清理逻辑
 onUnmounted(() => {
+  console.log('页面卸载，清理定时器...')
+  
+  // 只需要清理这个时间定时器
   if (timer) {
     clearInterval(timer)
-  }
-  if (notificationTimer) {
-    clearInterval(notificationTimer)
+    timer = null
   }
 })
-
 // 跳转到通知页面
+
 const navigateToNotification = () => {
   uni.navigateTo({
     url: '/pages/teacher/notification'
