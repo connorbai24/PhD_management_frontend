@@ -20,10 +20,10 @@
 	      @refresherrefresh="onRefresh"
 	    >
 	      <view v-for="(notification, index) in notificationData" :key="notification.id" class="notification-item" 
-	            :class="{ 'unread': !notification.isRead }" @click="handleNotificationClick(notification, index)">
+	            :class="{ 'unread': !notification.read }" @click="handleNotificationClick(notification, index)">
 	        <view class="notification-icon">
 	          <text class="icon-text">{{ getNotificationIcon(notification.type) }}</text>
-	          <view v-if="!notification.isRead" class="unread-dot"></view>
+	          <view v-if="!notification.read" class="unread-dot"></view>
 	        </view>
 	
 	        <view class="notification-content">
@@ -61,11 +61,11 @@
     <!-- 通知列表 -->
     <!-- <scroll-view class="notification-list" scroll-y="true" @scrolltolower="loadMore">
       <view v-for="(notification, index) in notificationData" :key="notification.id" class="notification-item" 
-            :class="{ 'unread': !notification.isRead }" @click="handleNotificationClick(notification, index)"> -->
+            :class="{ 'unread': !notification.read }" @click="handleNotificationClick(notification, index)"> -->
         <!-- 通知图标 -->
 <!--        <view class="notification-icon">
           <text class="icon-text">{{ getNotificationIcon(notification.type) }}</text>
-          <view v-if="!notification.isRead" class="unread-dot"></view>
+          <view v-if="!notification.read" class="unread-dot"></view>
         </view> -->
 
         <!-- 通知内容 -->
@@ -129,7 +129,7 @@ const totalCount = ref(0)
 
 // 计算未读数量
 const unreadCount = computed(() => {
-  return notificationData.value.filter(item => !item.isRead).length
+  return notificationData.value.filter(item => !item.read).length
 })
 
 // 页面加载时初始化数据
@@ -275,61 +275,41 @@ const formatTime = (timestamp) => {
   }
 }
 
-// 处理通知点击
+/// 处理通知点击
 const handleNotificationClick = async (notification, index) => {
+  // 1. 打印一下看看后端到底给了啥，以防万一
+  console.log('当前点击的通知数据:', notification);
+
   try {
-    // 如果是未读通知，标记为已读
-    if (!notification.isRead) {
-      await notificationAPI.markAsRead(notification.id)
-      notificationData.value[index].isRead = true
-      apiUtils.showSuccess('通知已标记为已读')
+    // === 业务逻辑：标记已读 ===
+    if (!notification.read) {
+      // 1. 前端视觉立刻变灰（提升体验）
+      notificationData.value[index].read = true;
+      // 2. 后台静默发送请求（不用等它返回，失败了也不影响看内容）
+      notificationAPI.markAsRead(notification.id);
     }
+
+    // === 视觉逻辑：展示详情 ===
+    // 既然后端没那些花哨的字段，我们就直接显示 content
+    // 如果你想显示时间，可以拼接到内容后面
     
-    // 根据通知类型执行不同操作
-    switch (notification.type) {
-      case 'schedule':
-      case 'schedule_update':
-        // 跳转到时间选择页面
-        uni.navigateTo({
-          url: '/pages/teacher/schedule'
-        })
-        break
-        
-      case 'task_assigned':
-        // 跳转到评审任务页面
-        uni.navigateTo({
-          url: '/pages/teacher/review'
-        })
-        break
-        
-      case 'research_area_approved':
-      case 'research_area_rejected':
-        // 跳转到研究方向管理页面
-        uni.navigateTo({
-          url: '/pages/teacher/research'
-        })
-        break
-        
-      default:
-        // 显示通知详情
-        const content = (notification.description || notification.content) + 
-                       (notification.highlightInfo ? `\n\n重点：${notification.highlightInfo}` : '') + 
-                       (notification.extraInfo ? `\n\n详情：${notification.extraInfo}` : '')
-        
-        uni.showModal({
-          title: notification.title,
-          content: content,
-          showCancel: false,
-          confirmText: '知道了'
-        })
+    let showContent = notification.content; // 核心内容
+    
+    // (可选) 如果你想在弹窗里显示时间，可以拼上去
+    if (notification.createTime) {
+        showContent += `\n\n时间：${notification.createTime}`;
     }
-    
+
+    uni.showModal({
+      title: notification.title || '通知', // 如果没有标题就显示默认字
+      content: showContent,                // 直接展示后端返回的正文
+      showCancel: false,                   // 纯查看，不需要取消按钮
+      confirmText: '知道了'
+    });
+
   } catch (error) {
-    console.error('处理通知点击失败:', error)
-    //apiUtils.handleError(error, '操作失败')
-	console.error('操作失败:', error)
-	uni.showToast({ title: '操作失败', icon: 'none' })
-	
+    console.error('操作异常:', error);
+    // 这里的错通常是 markAsRead 网络错误，不影响用户看弹窗，所以不用弹 toast 报错
   }
 }
 
@@ -346,7 +326,7 @@ const markAllAsRead = async () => {
     
     // 更新本地数据
     notificationData.value.forEach(item => {
-      item.isRead = true
+      item.read = true
     })
     
     apiUtils.hideLoading()
