@@ -611,7 +611,40 @@ export const authAPI = {
 
 export const apiUtils = {
   getToken: getToken,
-  request: request
+  request: request,
+  
+  showLoading: (title = '加载中') => {
+      uni.showLoading({
+        title: title,
+        mask: true
+      })
+    },
+  
+    // 2. 【核心修复】补上隐藏 Loading
+    hideLoading: () => {
+      uni.hideLoading()
+    },
+  
+    // 3. 顺便检查一下 showSuccess 是否存在（你后面也用到了）
+    showSuccess: (title = '操作成功') => {
+      uni.showToast({
+        title: title,
+        icon: 'success'
+      })
+    },
+    
+    // 4. 检查 showConfirm 是否存在
+    showConfirm: (content) => {
+      return new Promise((resolve) => {
+        uni.showModal({
+          title: '提示',
+          content: content,
+          success: (res) => {
+            resolve(res.confirm)
+          }
+        })
+      })
+    }
 };
 
 // ===================== 兼容 schedule.vue / notification.vue 的导出 =====================
