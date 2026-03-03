@@ -112,7 +112,7 @@ export const updateResearchArea = (areaId) => {
     skillId = parseInt(areaId);
   }
   
-  const requestData = { skillId: skillId };
+  const requestData = [ skillId ];
   console.log('发送的请求数据:', requestData);
   
   return request({

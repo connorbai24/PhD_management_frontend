@@ -22,6 +22,7 @@
             <text class="weekday-text">{{ daySchedule.weekday }}</text>
           </view>
           
+          
           <!-- 该日期下的评审任务 -->
           <view v-for="(task, taskIndex) in daySchedule.tasks" :key="taskIndex" class="review-card">
             <!-- 时间信息 -->
@@ -122,46 +123,34 @@
 
         <!-- 动态显示所有可选时段（未点击Modify时不可点击） -->
         <view v-if="!showTimeSelection" class="time-selection-area">
-          <!-- 动态渲染所有日期 -->
-          <view v-for="dayKey in dateKeys" :key="dayKey" class="day-section">
+          <!-- 按日期分组渲染时间段 -->
+          <view v-for="group in groupedTimeSlots" :key="group.dateKey" class="day-section">
             <view class="day-header">
-              <text class="day-title">{{ timeConfig[dayKey]?.displayDate || dayKey }}</text>
+              <text class="day-title">{{ group.date }}</text>
+              <text class="weekday-badge">{{ group.weekday }}</text>
             </view>
             
-            <!-- 上午时间段（如果存在） -->
-            <view v-if="timeConfig[dayKey]?.morning" class="time-period">
-              <text class="period-title">上午 ({{ timeConfig[dayKey].morning.startTime }}-{{ timeConfig[dayKey].morning.endTime }})</text>
-              <view class="time-slots">
-                <view 
-                  v-for="slot in getTimeSlotsForDay(dayKey, 'morning')" 
-                  :key="`${dayKey}-morning-${slot.id}`"
-                  class="time-slot"
-                  :class="{ active: selectedSlots.includes(`${timeConfig[dayKey].date}-morning-${slot.id}`) }"
-                >
-                  <text class="slot-text">{{ slot.time }}</text>
-                </view>
-              </view>
-            </view>
-            
-            <!-- 下午时间段（如果存在） -->
-            <view v-if="timeConfig[dayKey]?.afternoon" class="time-period">
-              <text class="period-title">下午 ({{ timeConfig[dayKey].afternoon.startTime }}-{{ timeConfig[dayKey].afternoon.endTime }})</text>
-              <view class="time-slots">
-                <view 
-                  v-for="slot in getTimeSlotsForDay(dayKey, 'afternoon')" 
-                  :key="`${dayKey}-afternoon-${slot.id}`"
-                  class="time-slot"
-                  :class="{ active: selectedSlots.includes(`${timeConfig[dayKey].date}-afternoon-${slot.id}`) }"
-                >
-                  <text class="slot-text">{{ slot.time }}</text>
-                </view>
+            <!-- 时间段列表 -->
+            <view class="time-slots">
+              <view 
+                v-for="slot in group.slots" 
+                :key="slot.id"
+                class="time-slot"
+                :class="{ active: slot.selected }"
+              >
+                <text class="slot-text">{{ slot.timeRange }}</text>
               </view>
             </view>
           </view>
           
+          <!-- 空状态 -->
+          <view v-if="groupedTimeSlots.length === 0" class="empty-slots">
+            <text class="empty-slots-text">暂无可选时间段</text>
+          </view>
+          
           <!-- 选择统计 -->
-          <view class="selection-summary">
-            <text class="summary-text">已选择: {{ selectedSlots.length }} / {{ totalSlots }} 个时间段</text>
+          <view v-if="totalSlots > 0" class="selection-summary">
+            <text class="summary-text">已选择: {{ selectedCount }} / {{ totalSlots }} 个时间段</text>
             <text class="summary-note">默认所有时段均可用，若有时段冲突请在截止日期前加以修改</text>
           </view>
         </view>
@@ -178,50 +167,40 @@
         </button>
 
         <!-- 时间选择区域（当点击Modify时显示，可编辑） -->
-        <view v-if="showTimeSelection" class="time-selection-area">
-          <!-- 动态渲染所有日期 -->
-          <view v-for="dayKey in dateKeys" :key="dayKey" class="day-section">
+        <view v-if="showTimeSelection" class="time-selection-area editable">
+          <!-- 按日期分组渲染时间段 -->
+          <view v-for="group in groupedTimeSlots" :key="group.dateKey" class="day-section">
             <view class="day-header">
-              <text class="day-title">{{ timeConfig[dayKey]?.displayDate || dayKey }}</text>
+              <text class="day-title">{{ group.date }}</text>
+              <text class="weekday-badge">{{ group.weekday }}</text>
             </view>
             
-            <!-- 上午时间段（如果存在） -->
-            <view v-if="timeConfig[dayKey]?.morning" class="time-period">
-              <text class="period-title">上午 ({{ timeConfig[dayKey].morning.startTime }}-{{ timeConfig[dayKey].morning.endTime }})</text>
-              <view class="time-slots">
-                <view 
-                  v-for="slot in getTimeSlotsForDay(dayKey, 'morning')" 
-                  :key="`${dayKey}-morning-${slot.id}`"
-                  class="time-slot"
-                  :class="{ active: selectedSlots.includes(`${timeConfig[dayKey].date}-morning-${slot.id}`) }"
-                  @click="toggleTimeSlot(timeConfig[dayKey].date, 'morning', slot.id)"
-                >
-                  <text class="slot-text">{{ slot.time }}</text>
-                </view>
-              </view>
-            </view>
-            
-            <!-- 下午时间段（如果存在） -->
-            <view v-if="timeConfig[dayKey]?.afternoon" class="time-period">
-              <text class="period-title">下午 ({{ timeConfig[dayKey].afternoon.startTime }}-{{ timeConfig[dayKey].afternoon.endTime }})</text>
-              <view class="time-slots">
-                <view 
-                  v-for="slot in getTimeSlotsForDay(dayKey, 'afternoon')" 
-                  :key="`${dayKey}-afternoon-${slot.id}`"
-                  class="time-slot"
-                  :class="{ active: selectedSlots.includes(`${timeConfig[dayKey].date}-afternoon-${slot.id}`) }"
-                  @click="toggleTimeSlot(timeConfig[dayKey].date, 'afternoon', slot.id)"
-                >
-                  <text class="slot-text">{{ slot.time }}</text>
+            <!-- 时间段列表（可点击） -->
+            <view class="time-slots">
+              <view 
+                v-for="slot in group.slots" 
+                :key="slot.id"
+                class="time-slot clickable"
+                :class="{ active: slot.selected }"
+                @click="toggleTimeSlot(slot.id)"
+              >
+                <text class="slot-text">{{ slot.timeRange }}</text>
+                <view class="slot-checkbox" :class="{ checked: slot.selected }">
+                  <text v-if="slot.selected" class="check-icon">✓</text>
                 </view>
               </view>
             </view>
           </view>
           
+          <!-- 空状态 -->
+          <view v-if="groupedTimeSlots.length === 0" class="empty-slots">
+            <text class="empty-slots-text">暂无可选时间段</text>
+          </view>
+          
           <!-- 选择统计 -->
-          <view class="selection-summary">
-            <text class="summary-text">已选择: {{ selectedSlots.length }} / {{ totalSlots }} 个时间段</text>
-            <text class="summary-note">默认所有时段均可用，若有时段冲突请在截止日期前加以修改</text>
+          <view v-if="totalSlots > 0" class="selection-summary">
+            <text class="summary-text">已选择: {{ selectedCount }} / {{ totalSlots }} 个时间段</text>
+            <text class="summary-note">点击时间段可切换选择状态</text>
           </view>
         </view>
       </view>
@@ -259,21 +238,66 @@ const deadlineInfo = ref({
   formattedDeadline: '',
   countdownText: ''
 })
-const selectedSlots = ref([])
+const timeSlots = ref([])  // 存储接口返回的时间段数组
 const showTimeSelection = ref(false)
-const timeConfig = ref({})
+const academicYear = ref('2026')  // 学年参数，默认2026年
 
 let timer = null
 let notificationTimer = null
 
-// 计算属性：获取日期键数组
-const dateKeys = computed(() => {
-  return Object.keys(timeConfig.value).filter(key => key.startsWith('day'))
+// 格式化时间显示 (从 ISO 字符串提取时间)
+const formatTime = (isoString) => {
+  const date = new Date(isoString)
+  const hours = date.getHours().toString().padStart(2, '0')
+  const minutes = date.getMinutes().toString().padStart(2, '0')
+  return `${hours}:${minutes}`
+}
+
+// 格式化日期显示
+const formatDate = (isoString) => {
+  const date = new Date(isoString)
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}月${day}日`
+}
+
+// 获取星期几
+const getWeekday = (isoString) => {
+  const date = new Date(isoString)
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return weekdays[date.getDay()]
+}
+
+// 计算属性：按日期分组的时间段
+const groupedTimeSlots = computed(() => {
+  const groups = {}
+  timeSlots.value.forEach(slot => {
+    const dateKey = slot.startTime.split('T')[0]  // 获取日期部分 "2026-01-24"
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date: formatDate(slot.startTime),
+        weekday: getWeekday(slot.startTime),
+        dateKey: dateKey,
+        slots: []
+      }
+    }
+    groups[dateKey].slots.push({
+      ...slot,
+      timeRange: `${formatTime(slot.startTime)} - ${formatTime(slot.endTime)}`
+    })
+  })
+  // 按日期排序
+  return Object.values(groups).sort((a, b) => a.dateKey.localeCompare(b.dateKey))
 })
 
 // 计算总时间段数
 const totalSlots = computed(() => {
-  return timeConfig.value.totalSlots || 0
+  return timeSlots.value.length
+})
+
+// 计算已选中的时间段数
+const selectedCount = computed(() => {
+  return timeSlots.value.filter(slot => slot.selected === true).length
 })
 
 // 计算属性
@@ -289,66 +313,13 @@ const countdown = computed(() => {
   return deadlineInfo.value.countdownText
 })
 
-// 获取指定日期和时间段的时间槽
-const getTimeSlotsForDay = (dayKey, period) => {
-  const dayData = timeConfig.value[dayKey]
-  if (!dayData || !dayData[period]) return []
-  
-  // 生成时间槽（这里需要根据实际的时间配置生成）
-  const { startTime, endTime, slotDuration = 45, breakTime = 15 } = dayData[period]
-  const slots = []
-  
-  // 简单的时间槽生成逻辑
-  const start = new Date(`2000-01-01 ${startTime}`)
-  const end = new Date(`2000-01-01 ${endTime}`)
-  let current = new Date(start)
-  let id = 1
-  
-  while (current < end) {
-    const slotEnd = new Date(current.getTime() + slotDuration * 60000)
-    if (slotEnd <= end) {
-      slots.push({
-        id: id++,
-        time: `${current.toTimeString().slice(0,5)}-${slotEnd.toTimeString().slice(0,5)}`,
-        startTime: current.toTimeString().slice(0,5),
-        endTime: slotEnd.toTimeString().slice(0,5)
-      })
-      current = new Date(slotEnd.getTime() + breakTime * 60000)
-    } else {
-      break
-    }
-  }
-  
-  return slots
-}
-
 // 初始化选中时间段（默认全选）
 const initializeSelectedSlots = () => {
-  const allSlots = []
-  
-  dateKeys.value.forEach(dayKey => {
-    const day = timeConfig.value[dayKey]
-    if (!day) return
-    
-    // 上午时间段
-    if (day.morning) {
-      const morningSlots = getTimeSlotsForDay(dayKey, 'morning')
-      morningSlots.forEach(slot => {
-        allSlots.push(`${day.date}-morning-${slot.id}`)
-      })
-    }
-    
-    // 下午时间段
-    if (day.afternoon) {
-      const afternoonSlots = getTimeSlotsForDay(dayKey, 'afternoon')
-      afternoonSlots.forEach(slot => {
-        allSlots.push(`${day.date}-afternoon-${slot.id}`)
-      })
-    }
-  })
-  
-  selectedSlots.value = allSlots
-  console.log('初始化选中时间段:', allSlots)
+  timeSlots.value = timeSlots.value.map(slot => ({
+    ...slot,
+    selected: slot.selected === null ? true : slot.selected  // null 默认为选中
+  }))
+  console.log('初始化选中时间段:', timeSlots.value)
 }
 
 // 加载时间配置
@@ -356,11 +327,10 @@ const loadTimeConfig = async () => {
   try {
     const response = await timeSelectionAPI.getTimeConfig()
     if (response.code === 200) {
-      timeConfig.value = response.data.timeConfig || {}
-      // 如果没有保存的选择，则初始化为全选
-      if (selectedSlots.value.length === 0) {
-        initializeSelectedSlots()
-      }
+      // 接口返回格式: [{id, startTime, endTime, selected}]
+      timeSlots.value = response.data || []
+      // 初始化选中状态（null 默认为选中）
+      initializeSelectedSlots()
     }
   } catch (error) {
     console.error('加载时间配置失败:', error)
@@ -371,12 +341,22 @@ const loadTimeConfig = async () => {
   }
 }
 
-// 加载用户时间选择
+// 加载用户时间选择（合并到时间段数据中）
 const loadUserTimeSelection = async () => {
   try {
-    const response = await timeSelectionAPI.getUserTimeSelection()
-    if (response.code === 200) {
-      selectedSlots.value = response.data.selectedSlots || []
+    const response = await timeSelectionAPI.getUserTimeSelection(academicYear.value)
+    if (response.code === 200 && response.data) {
+      // 用户选择数据格式: [{id, selected}] 或直接包含在 timeSlots 中
+      const userSelections = response.data
+      if (Array.isArray(userSelections)) {
+        // 合并用户选择到时间段数据
+        userSelections.forEach(selection => {
+          const slot = timeSlots.value.find(s => s.id === selection.id)
+          if (slot) {
+            slot.selected = selection.selected
+          }
+        })
+      }
     }
   } catch (error) {
     console.error('加载用户时间选择失败:', error)
@@ -390,7 +370,14 @@ const loadSavedTimeSelection = () => {
   try {
     const saved = uni.getStorageSync('selectedTimeSlots')
     if (saved) {
-      selectedSlots.value = JSON.parse(saved)
+      const savedData = JSON.parse(saved)
+      // 合并本地存储的选择状态
+      savedData.forEach(selection => {
+        const slot = timeSlots.value.find(s => s.id === selection.id)
+        if (slot) {
+          slot.selected = selection.selected
+        }
+      })
     }
   } catch (error) {
     console.error('加载保存的时间选择失败:', error)
@@ -440,14 +427,10 @@ const toggleTimeSelection = async () => {
 }
 
 // 切换时间段选择
-const toggleTimeSlot = (date, period, slotId) => {
-  const slotKey = `${date}-${period}-${slotId}`
-  const index = selectedSlots.value.indexOf(slotKey)
-  
-  if (index > -1) {
-    selectedSlots.value.splice(index, 1)
-  } else {
-    selectedSlots.value.push(slotKey)
+const toggleTimeSlot = (slotId) => {
+  const slot = timeSlots.value.find(s => s.id === slotId)
+  if (slot) {
+    slot.selected = !slot.selected
   }
 }
 
@@ -455,11 +438,20 @@ const toggleTimeSlot = (date, period, slotId) => {
 const saveTimeSelection = async () => {
   saveLoading.value = true
   try {
-    // 保存到服务器
-    const response = await timeSelectionAPI.saveTimeSelection(selectedSlots.value)
+    // 获取选中的时间段ID数组
+    const slotIds = timeSlots.value
+      .filter(slot => slot.selected === true)
+      .map(slot => slot.id)
+    
+    // 调用确认接口
+    const response = await timeSelectionAPI.confirmTimeSelection(academicYear.value, slotIds)
     if (response.code === 200) {
       // 同时保存到本地存储作为备份
-      uni.setStorageSync('selectedTimeSlots', JSON.stringify(selectedSlots.value))
+      const saveData = timeSlots.value.map(slot => ({
+        id: slot.id,
+        selected: slot.selected
+      }))
+      uni.setStorageSync('selectedTimeSlots', JSON.stringify(saveData))
       uni.showToast({
         title: '保存成功',
         icon: 'success'
@@ -469,7 +461,11 @@ const saveTimeSelection = async () => {
     console.error('保存时间选择失败:', error)
     // 如果服务器保存失败，至少保存到本地
     try {
-      uni.setStorageSync('selectedTimeSlots', JSON.stringify(selectedSlots.value))
+      const saveData = timeSlots.value.map(slot => ({
+        id: slot.id,
+        selected: slot.selected
+      }))
+      uni.setStorageSync('selectedTimeSlots', JSON.stringify(saveData))
       uni.showToast({
         title: '本地保存成功，请稍后重试同步',
         icon: 'none'
@@ -529,10 +525,12 @@ const checkNewNotifications = async () => {
 const initializePage = async () => {
   console.log('评审日程页面初始化中...')
   
-  // 并发加载所有必要数据
+  // 先加载时间配置获取 academicYear
+  await loadTimeConfig()
+  
+  // 并发加载其他数据
   await Promise.all([
-    loadTimeConfig(),
-    loadUserTimeSelection(),
+    loadUserTimeSelection(),  // 需要 academicYear 参数
     loadDeadlineInfo(),
     checkNewNotifications()
   ])
@@ -544,29 +542,32 @@ const initializePage = async () => {
   
   console.log('评审日程页面初始化完成')
 }
-
 onMounted(async () => {
+  // 1. 【保留】初始化页面数据（进页面必须要查一次）
   await initializePage()
   
-  // 设置定时器
+  // 2. 【保留】更新当前时间的定时器
+  // 这个只在本地跑，不请求服务器，完全无害，用于页面显示 "2026-01-30 20:30"
   timer = setInterval(() => {
     currentTime.value = new Date()
   }, 60000)
   
-  // 定时检查新通知
-  notificationTimer = setInterval(checkNewNotifications, 30000)
+  // 3. 【已删除】notificationTimer 相关代码
+  // 既然用了 WebSocket，就不需要每隔一分钟去骚扰服务器了
 })
 
+// 4. 【合并优化】页面卸载时的清理逻辑
 onUnmounted(() => {
+  console.log('页面卸载，清理定时器...')
+  
+  // 只需要清理这个时间定时器
   if (timer) {
     clearInterval(timer)
-  }
-  if (notificationTimer) {
-    clearInterval(notificationTimer)
+    timer = null
   }
 })
-
 // 跳转到通知页面
+
 const navigateToNotification = () => {
   uni.navigateTo({
     url: '/pages/teacher/notification'
@@ -769,7 +770,10 @@ const navigateTo = (page) => {
 }
 
 .day-header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16rpx;
   margin-bottom: 24rpx;
 }
 
@@ -779,47 +783,52 @@ const navigateTo = (page) => {
   color: #1d1d1f;
 }
 
-.time-period {
-  margin-bottom: 24rpx;
-}
-
-.period-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #1d1d1f;
-  display: block;
-  margin-bottom: 16rpx;
+.weekday-badge {
+  font-size: 24rpx;
+  color: #007AFF;
+  background: rgba(0, 122, 255, 0.1);
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 500;
 }
 
 .time-slots {
   display: flex;
-  gap: 12rpx;
+  gap: 16rpx;
   flex-wrap: wrap;
   justify-content: flex-start;
 }
 
 .time-slot {
-  flex: 0 0 auto;
-  min-width: 160rpx;
-  max-width: calc(33.333% - 8rpx);
-  height: 72rpx;
-  background: rgba(255, 255, 255, 0.8);
+  flex: 0 0 calc(50% - 8rpx);
+  min-height: 80rpx;
+  background: rgba(255, 255, 255, 0.9);
   border: 2rpx solid #E5E5EA;
-  border-radius: 12rpx;
+  border-radius: 16rpx;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 24rpx;
   transition: all 0.3s ease;
-  margin-bottom: 12rpx;
+  box-sizing: border-box;
 }
 
 .time-slot.active {
-  background: rgba(0, 122, 255, 0.1);
+  background: rgba(0, 122, 255, 0.08);
   border-color: #007AFF;
 }
 
+.time-slot.clickable {
+  cursor: pointer;
+}
+
+.time-slot.clickable:active {
+  transform: scale(0.98);
+  opacity: 0.8;
+}
+
 .slot-text {
-  font-size: 24rpx;
+  font-size: 26rpx;
   color: #1d1d1f;
   font-weight: 500;
 }
@@ -829,9 +838,46 @@ const navigateTo = (page) => {
   font-weight: 600;
 }
 
+.slot-checkbox {
+  width: 40rpx;
+  height: 40rpx;
+  border: 2rpx solid #E5E5EA;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.slot-checkbox.checked {
+  background: #007AFF;
+  border-color: #007AFF;
+}
+
+.check-icon {
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+
+.empty-slots {
+  text-align: center;
+  padding: 48rpx 0;
+}
+
+.empty-slots-text {
+  font-size: 28rpx;
+  color: #8E8E93;
+}
+
+.time-selection-area.editable {
+  border: 2rpx dashed #007AFF;
+}
+
 .selection-summary {
   text-align: center;
   padding: 24rpx 0;
+  margin-top: 16rpx;
   border-top: 1rpx solid rgba(0, 0, 0, 0.1);
 }
 

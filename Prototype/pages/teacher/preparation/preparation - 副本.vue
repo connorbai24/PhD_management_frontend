@@ -21,28 +21,14 @@
       <!-- 研究方向信息展示卡片 -->
       <view class="research-card">
         <view class="card-header">
-          <text class="edit-btn" @click="toggleEditMode" v-if="!isEditing">adding</text>
+          <text class="edit-btn" @click="toggleEditMode" v-if="!isEditing">编辑</text>
         </view>
-
+		
         <!-- 非编辑模式 - 显示信息 -->
         <view v-if="!isEditing" class="display-content">
-          <!-- 研究方向标签展示 -->
-          <view v-if="selectedResearchAreas.length > 0" class="research-areas-display">
-            <text class="display-label">当前研究方向</text>
-            <view class="research-tags">
-              <view 
-                v-for="area in selectedResearchAreas" 
-                :key="area.skillId" 
-                class="research-tag"
-              >
-                {{ area.skillName }}
-				
-				<view class="delete-btn" @click.stop="handleDelete(area)">
-				      <text class="delete-icon">×</text>
-				</view>
-              </view>
-            </view>
-          </view>
+          <text class="research-direction" v-if="currentResearch.direction">
+            {{ currentResearch.direction }}
+          </text>
           <text class="no-research" v-else>暂未设置研究方向</text>
         </view>
 
@@ -55,7 +41,6 @@
             <picker 
               :value="editData.directionIndex" 
               :range="researchDirections" 
-              range-key="skillName"
               @change="onDirectionChange"
               class="direction-picker"
             >
@@ -111,14 +96,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { 
-  fetchResearchDirections, 
-  fetchResearchConfirmation, 
-  saveResearchConfirmation, 
-  applyCustomResearchDirection,
-  fetchTeacherResearchAreas,
-  deleteResearchArea
-} from '@/pages/teacher/teacher_API.js'
+import { researchAPI, confirmationAPI } from '@/pages/teacher/teacher_API.js'
 
 // 响应式数据
 const loading = ref(true)
@@ -128,15 +106,10 @@ const isEditing = ref(false)
 const currentResearch = ref({})
 const editData = ref({})
 const researchDirections = ref([])
-const teacherResearchAreas = ref([]) // 教师已选择的研究方向
 
 // 计算属性
-const selectedResearchAreas = computed(() => {
-  return teacherResearchAreas.value.filter(item => item.selected)
-})
-
 const canConfirm = computed(() => {
-  return !isEditing.value && selectedResearchAreas.value.length > 0
+  return !isEditing.value && currentResearch.value.direction
 })
 
 // 方法
@@ -144,42 +117,25 @@ const loadData = async () => {
   try {
     loading.value = true
     
-    // 并行加载研究方向列表和教师已选研究方向
-    const [directionsRes, researchAreasRes] = await Promise.all([
-      fetchResearchDirections(),
-      fetchTeacherResearchAreas()
+    // 并行加载研究方向列表和当前确认信息
+    const [directionsRes, confirmationRes] = await Promise.all([
+      researchAPI.getDirections(),
+      confirmationAPI.getResearchConfirmation()
     ])
-	console.log(directionsRes,'directionsRes');
-	console.log(researchAreasRes,'researchAreasRes');
-		
-    // 设置研究方向选项 0123 15：30
-    // if (directionsRes.data && directionsRes.data.directions) {
-    //   researchDirections.value = directionsRes.data.directions
-    // }
-	
-	if (directionsRes.code == 200 ) {
-	  researchDirections.value = directionsRes.data
-	}
-	
-	// 设置教师已选研究方向
-	if (researchAreasRes.code == 200 && researchAreasRes.data) {
-	  teacherResearchAreas.value = researchAreasRes.data
-	  // 获取已选择的研究方向名称，用于显示
-	  const selectedAreas = researchAreasRes.data.filter(item => item.selected)
-	  if (selectedAreas.length > 0) {
-	    currentResearch.value.direction = selectedAreas.map(item => item.skillName).join('、')
-	  }
-	}
-	console.log();
     
-    // 设置当前研究方向 0123 15：30
-    // if (confirmationRes.data) {
-    //   currentResearch.value = {
-    //     direction: confirmationRes.data.direction || '',
-    //     isConfirmed: confirmationRes.data.isConfirmed || false,
-    //     lastUpdated: confirmationRes.data.lastUpdated
-    //   }
-    // }
+    // 设置研究方向选项
+    if (directionsRes.data && directionsRes.data.directions) {
+      researchDirections.value = directionsRes.data.directions
+    }
+    
+    // 设置当前研究方向
+    if (confirmationRes.data) {
+      currentResearch.value = {
+        direction: confirmationRes.data.direction || '',
+        isConfirmed: confirmationRes.data.isConfirmed || false,
+        lastUpdated: confirmationRes.data.lastUpdated
+      }
+    }
     
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -216,7 +172,7 @@ const saveLocalData = () => {
 
 const toggleEditMode = () => {
   isEditing.value = true
-  const idx = researchDirections.value.findIndex(item => item.skillName === currentResearch.value.direction)
+  const idx = researchDirections.value.indexOf(currentResearch.value.direction)
   
   if (idx === -1) {
     // 不是预设列表，视为自定义
@@ -237,7 +193,7 @@ const toggleEditMode = () => {
 const onDirectionChange = (e) => {
   const index = e.detail.value
   editData.value.directionIndex = index
-  editData.value.direction = researchDirections.value[index]?.skillName || ''
+  editData.value.direction = researchDirections.value[index]
   editData.value.customDirection = '' // 清空手动输入
 }
 
@@ -251,53 +207,10 @@ const onCustomInput = (e) => {
 }
 
 const cancelEdit = () => {
+	
   isEditing.value = false
   editData.value = {}
 }
-
-
-// ✅ 新增：处理删除逻辑
-const handleDelete = (item) => {
-  uni.showModal({
-    title: '确认删除',
-    content: `确定要移除研究方向 "${item.skillName}" 吗？`,
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          uni.showLoading({ title: '删除中...' });
-          
-          // 1. 调用后端接口删除
-          // 注意：item.id 是 skill表的主键，但删除接口可能需要 teacher_skill 表的关联ID
-          // 如果你的 deleteResearchArea 接收的是 skillId，那就传 item.skillId
-          // 如果你的后端是 restful 风格删除单个方向，通常传 skillId 即可（取决于后端实现）
-          await deleteResearchArea(item.skillId);
-          
-          // 2. 更新本地视图 (直接从数组中移除，不用重新请求接口，体验更好)
-          teacherResearchAreas.value = teacherResearchAreas.value.filter(
-            area => area.skillId !== item.skillId
-          );
-          
-          // 更新 currentResearch 显示文本
-          const selected = teacherResearchAreas.value.filter(i => i.selected);
-          if (selected.length > 0) {
-            currentResearch.value.direction = selected.map(i => i.skillName).join('、');
-          } else {
-            currentResearch.value.direction = '';
-          }
-
-          uni.showToast({ title: '已移除', icon: 'success' });
-          
-        } catch (error) {
-          console.error('删除失败:', error);
-          uni.showToast({ title: '删除失败', icon: 'none' });
-        } finally {
-          uni.hideLoading();
-        }
-      }
-    }
-  });
-}
-
 
 const saveChanges = async () => {
   let finalDirection = ''
@@ -323,47 +236,15 @@ const saveChanges = async () => {
     
     if (isCustom) {
       // 申请自定义研究方向
-      const customData = {
-        id: 0,
-        name: finalDirection,
-        status: 'pending',
-        submittedAt: new Date().toISOString()
-      }
-      await applyCustomResearchDirection(customData)
+      await researchAPI.applyCustomDirection(finalDirection)
       uni.showToast({
         title: '自定义研究方向申请已提交',
         icon: 'success'
       })
     } else {
-      // 使用预设方向，调用 /teacher/research-areas 接口保存
-      
-      // 从 researchDirections 中找到选中的方向
-      const selectedDirection = researchDirections.value[editData.value.directionIndex]
-      
-      // 获取已选研究方向的ID数组
-      const existingIds = selectedResearchAreas.value.map(area => area.skillId || area.id).filter(id => id)
-      
-      // 获取新选择方向的ID
-      const newId = selectedDirection?.id || selectedDirection?.skillId
-      
-      // 检查是否已存在该方向，避免重复添加
-      if (newId && !existingIds.includes(newId)) {
-        existingIds.push(newId)
-      }
-      
-      // 调用 /teacher/research-areas 接口保存
-      await saveResearchConfirmation(existingIds)
-      
-      // 更新本地状态
+      // 直接使用预设方向，暂时更新本地状态
       currentResearch.value.direction = finalDirection
       saveLocalData()
-      
-      // 重新加载研究方向数据
-      const researchAreasRes = await fetchTeacherResearchAreas()
-      if (researchAreasRes.code == 200 && researchAreasRes.data) {
-        teacherResearchAreas.value = researchAreasRes.data
-      }
-      
       uni.showToast({
         title: '研究方向已更新',
         icon: 'success'
@@ -396,13 +277,8 @@ const confirmAndContinue = async () => {
   try {
     confirming.value = true
     
-    // 获取已选研究方向的ID数组
-    const researchAreaIds = selectedResearchAreas.value
-      .map(area => area.skillId || area.id)
-      .filter(id => id)
-    
-    // 调用 /teacher/research-areas 接口确认研究方向
-    await saveResearchConfirmation(researchAreaIds)
+    // 调用API确认研究方向
+    await confirmationAPI.saveResearchConfirmation(currentResearch.value.direction)
     
     // 保存确认状态到本地
     currentResearch.value.isConfirmed = true
@@ -419,7 +295,7 @@ const confirmAndContinue = async () => {
 
     setTimeout(() => {
       uni.navigateTo({
-        url: '/pages/teacher/profile'
+        url: '/pages/teacher/schedule'
       })
     }, 1500)
     
@@ -436,7 +312,6 @@ const confirmAndContinue = async () => {
 
 // 生命周期
 onMounted(() => {
-	
   loadData()
 })
 </script>
@@ -543,35 +418,6 @@ onMounted(() => {
 .display-content {
   padding: 20rpx 32rpx 40rpx;
   text-align: center;
-}
-
-.research-areas-display {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-}
-
-.display-label {
-  font-size: 28rpx;
-  color: #86868b;
-  margin-bottom: 8rpx;
-}
-
-.research-tags {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16rpx;
-}
-
-.research-tag {
-  background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-  color: #ffffff;
-  padding: 12rpx 28rpx;
-  border-radius: 30rpx;
-  font-size: 28rpx;
-  font-weight: 500;
-  box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.25);
 }
 
 .research-direction {
@@ -746,44 +592,5 @@ onMounted(() => {
 .confirm-btn.disabled {
   background: #d1d1d6;
   color: #86868b;
-}
-
-
-/* 修改 .research-tag 使其支持 Flex 布局 */
-.research-tag {
-  background: linear-gradient(135deg, #007aff 0%, #5856d6 100%);
-  color: #ffffff;
-  padding: 12rpx 20rpx 12rpx 28rpx; /* 右边padding改小一点，给按钮留位置 */
-  border-radius: 30rpx;
-  font-size: 28rpx;
-  font-weight: 500;
-  box-shadow: 0 4rpx 12rpx rgba(0, 122, 255, 0.25);
-  
-  /* ✅ 新增 Flex 布局 */
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-}
-
-/* ✅ 新增 删除按钮样式 */
-.delete-btn {
-  width: 36rpx;
-  height: 36rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.delete-btn:active {
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.delete-icon {
-  font-size: 28rpx;
-  line-height: 1;
-  margin-top: -2rpx; /* 微调位置 */
-  color: #fff;
 }
 </style>

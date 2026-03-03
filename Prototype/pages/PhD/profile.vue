@@ -106,7 +106,8 @@
 
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, } from 'vue'
+import { onShow } from '@dcloudio/uni-app';
 import { fetchStudentInfo, logoutUser } from './PhD_API.js'
 
 const currentTab = ref('profile')
@@ -256,7 +257,7 @@ const loadUserInfo = async () => {
 	}
 }
 
-onMounted(() => {
+onShow(() => {
 	console.log('Profile页面挂载完毕');
 	loadUserInfo()
 })

@@ -10,7 +10,7 @@
 				<text class="welcome-text">{{ greeting }}，欢迎使用博士生评审系统</text>
 			</view>
 			
-			<!-- 角色选择卡片 -->
+<!-- 			角色选择卡片
 			<view class="role-selector">
 				<view class="segmented-control">
 					<view 
@@ -35,7 +35,7 @@
 						<text class="segment-text">管理员</text>
 					</view>
 				</view>
-			</view>
+			</view> -->
 			
 			<!-- 登录表单 -->
 			<view class="form-container">
@@ -56,14 +56,15 @@
 				<view class="input-container">
 					<view class="input-wrapper" :class="{ focused: passwordFocused, filled: loginForm.password }">
 						<text class="input-label">密码</text>
-						<input 
-							class="input-field" 
-							:type="passwordVisible ? 'text' : 'password'" 
-							v-model="loginForm.password"
-							@focus="passwordFocused = true"
-							@blur="passwordFocused = false"
-							maxlength="20"
-						/>
+					<input 
+						class="input-field"
+						:class="{ masked: !passwordVisible }"
+						type="text"
+						v-model="loginForm.password"
+						@focus="passwordFocused = true"
+						@blur="passwordFocused = false"
+						maxlength="20"
+					/>
 						<view class="password-toggle" @click="togglePasswordVisibility">
 							<image 
 								class="password-icon" 
@@ -108,7 +109,7 @@ import { loginApi } from './loginAPI.js'
 
 // 响应式数据
 const greeting = ref('')
-const selectedRole = ref('phd') // 默认选择学生角色
+//const selectedRole = ref('phd') // 默认选择学生角色
 const usernameFocused = ref(false)
 const passwordFocused = ref(false)
 const passwordVisible = ref(false) // 新增：密码可见性状态
@@ -136,17 +137,16 @@ const loginForm = reactive({
 
 // 计算属性
 const canLogin = computed(() => {
-	return selectedRole.value && 
-		   loginForm.username.trim() && 
+	return loginForm.username.trim() && 
 		   loginForm.password.trim()
 })
 
-// 方法
-const selectRole = (role) => {
-	selectedRole.value = role
-	// 添加轻微的触觉反馈
-	uni.vibrateShort()
-}
+// // 方法
+// const selectRole = (role) => {
+// 	selectedRole.value = role
+// 	// 添加轻微的触觉反馈
+// 	uni.vibrateShort()
+// }
 
 // 切换密码可见性
 const togglePasswordVisibility = () => {
@@ -189,7 +189,7 @@ const handleLogin = () => {
 
 const performLogin = () => {
   const loginData = {
-    role: selectedRole.value,
+    //role: selectedRole.value,
     username: loginForm.username,
     password: loginForm.password
   };
@@ -217,7 +217,7 @@ const performLogin = () => {
           name: loginData.name
         });
         setTimeout(() => {
-          navigateByRole();
+          navigateByRole(loginData.role);
         }, 1500);
       } else {
         showErrorToast(res && res.msg ? res.msg : '登录失败');
@@ -238,26 +238,23 @@ const performLogin = () => {
     });
 };
 
-const navigateByRole = () => {
+const navigateByRole = (serverRole) => {
 	const rolePages = {
 		'phd': '/pages/PhD/preparation',
 		'teacher': '/pages/teacher/preparation/preparation', 
 		'admin': '/pages/admin/dashboard/dashboard'
 	}
 	
-	const targetPage = rolePages[selectedRole.value]
-	
-	if (targetPage) {
-		// 用户信息已在登录时统一存储
-		uni.redirectTo({
-		    url: targetPage
-		})
-		
-		// 使用reLaunch确保可以跳转到tabBar页面
-		// uni.reLaunch({
-		// 	url: targetPage
-		// })
-	}
+	const targetPage = rolePages[serverRole]
+	    
+	    if (targetPage) {
+	        uni.reLaunch({
+	            url: targetPage,
+	            fail: (err) => console.error('跳转失败', err)
+	        })
+	    } else {
+	        showErrorToast('未知用户角色，无法跳转');
+	    }
 }
 
 const forgotPassword = () => {
@@ -456,6 +453,11 @@ onLoad(() => {
 	font-size: 32rpx;
 	color: #1d1d1f;
 	box-sizing: border-box;
+}
+
+/* 避免 Edge 的原生眼睛：改用文字遮罩 */
+.input-field.masked {
+	-webkit-text-security: disc;
 }
 
 /* 密码输入框特殊处理 */

@@ -142,7 +142,7 @@ onMounted(async () => {
     const profileRes = await teacherAPI.getProfile()
     if (profileRes.code === 200) {
       teacherInfo.value = {
-        name: profileRes.data.name || '王伟',
+        name: profileRes.data.name || '',
         researchAreas: profileRes.data.researchAreas || []
       }
       

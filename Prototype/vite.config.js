@@ -13,7 +13,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
-      }
+      },
+	  '/teacher': {
+	          target: 'http://localhost:8080',
+	          changeOrigin: true,
+	          // No rewrite needed if the backend expects /teacher
+	        }
     }
   }
 })

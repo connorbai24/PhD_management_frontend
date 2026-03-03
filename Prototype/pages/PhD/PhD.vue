@@ -87,22 +87,29 @@
       <view class="section-title">
         <text class="title-text">📢 通知公告</text>
         <text class="more-text" @click="viewAllNotices">查看全部</text>
-      </view>
-      <view class="notice-list">
-        <view 
-          v-for="notice in notices" 
-          :key="notice.id" 
-          class="notice-item"
-          @click="viewNoticeDetail(notice)"
-        >
-          <view class="notice-header">
-            <text class="notice-title">{{ notice.title }}</text>
-            <text class="notice-time">{{ notice.time }}</text>
-          </view>
-          <text class="notice-content">{{ notice.content }}</text>
-        </view>
-      </view>
     </view>
+	  
+	  
+     <view class="notice-list">
+             <view 
+               v-for="notice in notices" 
+               :key="notice.id" 
+               class="notice-item"
+               :class="{ 'is-read': notice.read }" 
+               @click="handleNoticeClick(notice)"
+             >
+               <view class="notice-header">
+                 <view class="title-wrapper">
+                    <view v-if="!notice.read" class="red-dot"></view>
+                    <text class="notice-title">{{ notice.title }}</text>
+                 </view>
+                 <text class="notice-time">{{ notice.time }}</text>
+               </view>
+               <text class="notice-content">{{ notice.content }}</text>
+             </view>
+           </view>
+     
+         </view>
 
     <!-- 底部导航栏 -->
     <view class="bottom-nav">
@@ -122,27 +129,41 @@
 
     <!-- 全部通知弹窗 -->
     <view v-if="showAllNotices" class="modal-overlay" @click="closeAllNotices">
-      <view class="modal-content" @click.stop>
-        <view class="modal-header">
-          <text class="modal-title">全部通知</text>
-          <text class="modal-close" @click="closeAllNotices">✕</text>
-        </view>
-        <scroll-view class="modal-body" scroll-y>
-          <view 
-            v-for="notice in allNotices" 
-            :key="notice.id" 
-            class="modal-notice-item"
-            @click="viewNoticeDetail(notice)"
-          >
-            <view class="notice-header">
-              <text class="notice-title">{{ notice.title }}</text>
-              <text class="notice-time">{{ notice.time }}</text>
+          <view class="modal-content" @click.stop>
+            <view class="modal-header">
+              <text class="modal-title">全部通知</text>
+              <text class="modal-close" @click="closeAllNotices">✕</text>
             </view>
-            <text class="notice-content">{{ notice.content }}</text>
+            
+            <scroll-view 
+              class="modal-body" 
+              scroll-y 
+              @scrolltolower="loadMoreNotices"
+			  :lower-threshold="5"
+            >
+              <view 
+                v-for="notice in allNotices" 
+                :key="notice.id" 
+                class="modal-notice-item"
+                :class="{ 'is-read': notice.read }"
+                @click="handleNoticeClick(notice)"
+              >
+                <view class="notice-header">
+                  <view class="title-wrapper">
+                     <view v-if="!notice.read" class="red-dot"></view>
+                     <text class="notice-title">{{ notice.title }}</text>
+                  </view>
+                  <text class="notice-time">{{ notice.time }}</text>
+                </view>
+                <text class="notice-content">{{ notice.content }}</text>
+              </view>
+    
+              <view class="loading-text">
+                {{ isLoading ? '加载中...' : (hasMore ? '上拉加载更多' : '没有更多了') }}
+              </view>
+            </scroll-view>
           </view>
-        </scroll-view>
-      </view>
-    </view>
+        </view>
   </view>
 </template>
 
@@ -150,10 +171,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app';
 import {
   fetchStudentInfo,
   fetchCurrentReview,
-  fetchNotices
+  fetchNotices,
+  markNoticeAsRead
 } from './PhD_API.js'
 
 const currentTab = ref('PhD')
@@ -335,40 +358,110 @@ const loadCurrentReview = async () => {
   }
 }
 
-const loadNotices = async () => {
-  console.log('3. 开始加载通知...');
+// 分页相关变量
+const page = ref(1);          // 当前页码
+const pageSize = ref(10);     // 每页条数
+const hasMore = ref(true);    // 是否还有更多数据
+const isLoading = ref(false); // 防止重复请求
+
+// 修改后的 loadNotices 函数
+const loadNotices = async (isLoadMore = false) => {
+  if (isLoading.value) return;
+  isLoading.value = true;
+  
   try {
-    const response = await fetchNotices();
+    // 如果是刷新（非追加），重置页码
+    if (!isLoadMore) {
+      page.value = 1;
+      // 注意：这里先不重置 hasMore，等数据回来再判断
+    }
+
+    const response = await fetchNotices(page.value, pageSize.value);
     const data = handleApiResponse(response, '通知');
     
-    console.log('3.2 通知API成功，解析后的data:', data);
-    
-    // 处理分页数据 - 兼容不同的分页数据结构
     let list = [];
-    if (data.list) {
-      list = data.list;
-    } else if (data.records) {
-      list = data.records;
-    } else if (Array.isArray(data)) {
-      list = data;
+    if (data.list) list = data.list;
+    else if (data.records) list = data.records;
+    else if (Array.isArray(data)) list = data;
+    
+    // 补全 read 属性
+    list = list.map(item => ({ ...item, read: !!item.read }));
+
+    if (isLoadMore) {
+      allNotices.value = [...allNotices.value, ...list];
     } else {
-      console.warn('通知数据结构异常:', data);
+      allNotices.value = list;
+      notices.value = list.slice(0, 2);
     }
-    
-    notices.value = list.slice(0, 2);
-    allNotices.value = list;
-    
-    console.log('3.3 更新后的notices:', notices.value);
-    console.log('3.4 更新后的allNotices:', allNotices.value);
-    
+
+    // ==================================================
+    // ✅ 核心修复：使用 total 字段精准判断
+    // ==================================================
+    if (data.total !== undefined) {
+      // 如果当前手里拿到的所有数据 >= 总数，说明没更多了
+      if (allNotices.value.length >= data.total) {
+        hasMore.value = false;
+      } else {
+        hasMore.value = true;
+        page.value++; // 只有确认还有数据，才把页码 +1
+      }
+    } else {
+      // 降级策略（万一后端没返回 total）：
+      // 如果这一页的数据少于 pageSize (比如只回来9条)，那肯定没了
+      // 如果这一页回来 0 条，也肯定没了
+      if (list.length < pageSize.value) {
+        hasMore.value = false;
+      } else {
+        hasMore.value = true;
+        page.value++;
+      }
+    }
+
   } catch (error) {
-    console.error('3.5 加载通知失败:', error);
-    uni.showToast({ 
-      title: `获取通知失败: ${error.message}`, 
-      icon: 'none',
-      duration: 3000
-    });
+    console.error('加载通知失败:', error);
+    uni.showToast({ title: '加载失败', icon: 'none' });
+  } finally {
+    isLoading.value = false;
   }
+}
+
+// 专门给弹窗用的加载更多函数
+const loadMoreNotices = () => {
+  if (hasMore.value) {
+    loadNotices(true); // 传入 true 表示是追加加载
+  }
+}
+
+// ✅ 修复后的点击处理函数
+const handleNoticeClick = async (notice) => {
+  // 1. 如果是未读状态，调用API标记已读
+  if (!notice.read) {
+    try {
+      await markNoticeAsRead(notice.id);
+      
+      // 立即更新本地视图状态
+      notice.read = true;
+      
+      // 同步更新两个列表的数据（如果它们不是同一个引用）
+      const mainNotice = notices.value.find(n => n.id === notice.id);
+      if(mainNotice) mainNotice.read = true;
+      
+      const modalNotice = allNotices.value.find(n => n.id === notice.id);
+      if(modalNotice) modalNotice.read = true;
+      
+    } catch (error) {
+      console.error('标记已读失败', error);
+    }
+  }
+
+  // 2. ❌ 不要用 currentNotice.value = notice
+  // 3. ✅ 直接用系统弹窗显示详情
+  uni.showModal({
+    title: notice.title,
+    content: notice.content,
+    showCancel: false,
+    confirmText: "知道了"
+  });
 }
 
 // 检查登录状态
@@ -392,8 +485,8 @@ const checkLoginStatus = () => {
   return true;
 }
 
-onMounted(() => {
-  console.log('页面挂载完毕 (onMounted)，开始初始化所有数据...');
+onShow(() => {
+  console.log('页面挂载完毕 (onShow)，开始初始化所有数据...');
   
   // 检查登录状态
   if (!checkLoginStatus()) {
@@ -790,7 +883,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 200;
 }
 
 .modal-content {
@@ -798,7 +891,7 @@ onMounted(() => {
   border-radius: 24rpx;
   width: 90%;
   max-width: 700rpx;
-  max-height: 80vh; /* 使用vh单位确保不超出屏幕 */
+  height: 70vh; /* 使用vh单位确保不超出屏幕 */
   display: flex;
   flex-direction: column;
   overflow: hidden; /* 防止内容溢出 */
@@ -826,10 +919,22 @@ onMounted(() => {
   cursor: pointer;
 }
 
+/* 修改后的 .modal-body */
 .modal-body {
+  /* 必须指定宽度，防止坍塌 */
+  width: 100%;
+  
+  /* Flex 子元素撑满剩余空间 */
   flex: 1;
-  height: 0; /* 关键：让flex子元素正确计算高度 */
-  padding: 0;
+  
+  /* 关键：必须设置 overflow-y: auto 才能滚动 */
+  overflow-y: auto;
+  
+  /* 关键：给一个极小的高度基准，配合 flex:1 自动撑开 */
+  height: 0; 
+  
+  /* 针对 H5 的优化 */
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-notice-item {
@@ -923,5 +1028,30 @@ onMounted(() => {
 .nav-item.active .nav-label {
   color: #667eea;
   font-weight: 500;
+}
+
+/* 未读的小红点 */
+.red-dot {
+    width: 16rpx;
+    height: 16rpx;
+    background-color: #ff4d4f;
+    border-radius: 50%;
+    margin-right: 12rpx;
+}
+
+/* 已读状态：整体变灰，文字变淡 */
+.notice-item.is-read .title {
+    color: #999; /* 标题变灰 */
+}
+
+.notice-item.is-read {
+    background-color: #f9f9f9; /* 背景变暗一点点 */
+}
+
+.loading-text {
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
+  padding: 20rpx 0;
 }
 </style>
